@@ -5,7 +5,7 @@
 
 **Your entire org's PRs. One terminal. Zero dependencies.**
 
-`open-prs` is a single-file CLI dashboard that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works.
+`open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
 No config files. No Docker. No Node modules. Just one Python script and `gh`.
 
@@ -70,6 +70,14 @@ open-prs <org> [--once]
 - `r` — Refresh immediately
 - `c` — Clear successfully merged/deployed PRs
 - `q` — Quit (also `Ctrl+C`)
+
+## Tips
+
+**Give your AI context about open PRs.** The `--once` flag outputs plain text that's easy to pipe or paste. Add something like this to your AI coding assistant's rules (e.g. Cursor rules, Claude system prompt):
+
+> Before starting work, run `open-prs <org> --once` to see what's in flight.
+
+This keeps your agent aware of active PRs, CI status, and in-progress deploys across the org — so it doesn't duplicate work or miss context.
 
 ## Status Badges
 
