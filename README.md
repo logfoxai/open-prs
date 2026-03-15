@@ -106,16 +106,17 @@ Adding `--plain` strips ANSI codes so the output is clean text your agent can pa
 - `● running` — Checks in progress
 - `no ci` — No status checks configured
 
-### Deploy (on merged PRs)
+### Merged / Deploy (on merged PRs)
 
-After merge, if GitHub Actions workflows are triggered:
+Recently merged PRs appear for 15 minutes with a purple **✓ merged** badge. If post-merge workflows exist, the badge updates to reflect deploy status:
 
+- `✓ merged` — Recently merged (no deploy pipeline)
 - `✓ deployed` — All workflows completed successfully
 - `✗ failed` — One or more workflows failed
 - `● deploying` — Workflows in progress
 - `◦ queued` — Workflows are queued/waiting
 
-Failed deploys persist until resolved. Successful deploys fade after 15 minutes.
+Merged and successful deploys fade after 15 minutes. Failed deploys persist until resolved.
 
 ## How It Works
 
