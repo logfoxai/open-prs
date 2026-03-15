@@ -57,8 +57,8 @@ POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 4
 TWO_COL_MIN_WIDTH = 100
-AD_URL = "https://app.logfox.ai"
-AD_TEXT = "LogFox.ai — AI-powered log monitoring. Try the free beta →"
+AD_URL = "https://app.aeroview.io"
+AD_TEXT = "Logfox — AI-powered log monitoring. Try the free beta →"
 
 # ── GraphQL ──────────────────────────────────────────────────────────────────
 
