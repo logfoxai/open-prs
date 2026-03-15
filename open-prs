@@ -48,6 +48,7 @@ ALT_SCREEN_OFF = "\033[?1049l"
 CURSOR_HOME = "\033[H"
 CLEAR_BELOW = "\033[J"
 CLEAR_LINE = "\033[K"
+MOVE_TO_ROW = "\033[{row};1H"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
@@ -55,6 +56,8 @@ POLL_SECONDS = 300
 DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 4
 TWO_COL_MIN_WIDTH = 100
+AD_URL = "https://app.logfox.ai"
+AD_TEXT = "LogFox.ai — AI-powered log monitoring. Try the free beta →"
 
 # ── GraphQL ──────────────────────────────────────────────────────────────────
 
@@ -434,6 +437,13 @@ def render(
 # ── run modes ────────────────────────────────────────────────────────────────
 
 
+def _render_ad_bar(cols: int) -> str:
+    """Render a subtle ad bar for the bottom of the screen."""
+    link = osc8_link(AD_URL, f"{BOLD}{CYAN}{AD_TEXT}{RESET}")
+    pad = " " * max(cols - visible_len(f"  {AD_TEXT}  "), 0)
+    return f"{DIM}{'─' * cols}{RESET}\n  {link}{pad}"
+
+
 def _show_loading(msg: str) -> None:
     write(f"\r{DIM}{msg}…{RESET}")
 
@@ -479,13 +489,20 @@ def run_watch(org: str) -> None:
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
     try:
         tty.setcbreak(sys.stdin.fileno())
+
+        def _draw(open_prs, visible):
+            cols, rows = shutil.get_terminal_size((80, 24))
+            output = render(open_prs, visible, org, watch=True)
+            ad = _render_ad_bar(cols)
+            bottom = MOVE_TO_ROW.format(row=rows - 1)
+            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{bottom}{ad}")
+
         while True:
             open_prs, deployments = _fetch_all(
                 org, failed_cache, _show_loading_alt,
             )
             visible = [d for d in deployments if d["url"] not in dismissed]
-            output = render(open_prs, visible, org, watch=True)
-            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}")
+            _draw(open_prs, visible)
 
             key = _wait_for_key(POLL_SECONDS)
             if key in ("q", "\x03"):
@@ -493,8 +510,7 @@ def run_watch(org: str) -> None:
             if key == "c":
                 dismissed.update(d["url"] for d in deployments)
                 visible = [d for d in deployments if d["url"] not in dismissed]
-                output = render(open_prs, visible, org, watch=True)
-                write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}")
+                _draw(open_prs, visible)
     except KeyboardInterrupt:
         pass
     finally:
