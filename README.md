@@ -30,7 +30,7 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 
 ## Install
 
-Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`), authenticated.
+Requires Python 3.9+, [GitHub CLI](https://cli.github.com/) (`gh`) authenticated, and macOS or Linux (Windows is not supported).
 
 ```bash
 # 1. Make sure ~/.local/bin is in your PATH (add to ~/.zshrc or ~/.bashrc)
