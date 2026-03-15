@@ -16,19 +16,6 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
   <img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
 </p>
 
-## Quick Start
-
-```bash
-# Install
-curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
-chmod +x ~/.local/bin/open-prs
-
-# Run
-open-prs myorg                 # full-screen live dashboard
-open-prs myorg --once          # one-shot print and exit
-open-prs myorg --once --plain  # plain text, no colors (for piping or AI usage)
-```
-
 ## Features
 
 - **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
