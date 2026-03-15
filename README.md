@@ -28,28 +28,26 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 - **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
 - **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
 
-## Requirements
+## Install
 
-- Python 3.9+
-- [GitHub CLI](https://cli.github.com/) (`gh`) — installed and authenticated
-
-## Installation
-
-Make sure `~/.local/bin` is in your `PATH`. Add this to your `~/.zshrc` (or `~/.bashrc`):
+Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`), authenticated.
 
 ```bash
+# 1. Make sure ~/.local/bin is in your PATH (add to ~/.zshrc or ~/.bashrc)
 export PATH="$HOME/.local/bin:$PATH"
-```
 
-**curl** (recommended):
-
-```bash
+# 2. Download
 mkdir -p ~/.local/bin
 curl -fsSL -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
 chmod +x ~/.local/bin/open-prs
+
+# 3. Run
+open-prs myorg                 # full-screen live dashboard
+open-prs myorg --once          # one-shot print and exit
+open-prs myorg --once --plain  # plain text (for piping or AI agents)
 ```
 
-**Clone and symlink:**
+Or clone and symlink:
 
 ```bash
 git clone https://github.com/logfoxai/open-prs.git
