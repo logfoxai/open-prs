@@ -48,10 +48,17 @@ open-prs myorg --once --plain  # plain text, no colors (for piping or AI usage)
 
 ## Installation
 
+Make sure `~/.local/bin` is in your `PATH`. Add this to your `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
 **curl** (recommended):
 
 ```bash
-curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
+mkdir -p ~/.local/bin
+curl -fsSL -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
 chmod +x ~/.local/bin/open-prs
 ```
 
