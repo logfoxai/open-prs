@@ -49,6 +49,7 @@ CURSOR_HOME = "\033[H"
 CLEAR_BELOW = "\033[J"
 CLEAR_LINE = "\033[K"
 MOVE_TO_ROW = "\033[{row};1H"
+SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
@@ -464,6 +465,7 @@ def _fetch_all(org: str, failed_cache: dict, loading_fn) -> tuple:
 
 
 def run_once(org: str) -> None:
+    write(SET_TITLE.format(title=f"open-prs — {org}"))
     open_prs, deployments = _fetch_all(org, {}, _show_loading)
     write(f"\r{CLEAR_LINE}")
     print(render(open_prs, deployments, org, watch=False))
@@ -486,6 +488,7 @@ def run_watch(org: str) -> None:
     failed_cache: dict[str, dict] = {}
     dismissed: set[str] = set()
 
+    write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
     try:
         tty.setcbreak(sys.stdin.fileno())
