@@ -3,8 +3,9 @@
 """Live TUI dashboard for all open PRs across a GitHub org.
 
 Usage:
-    open-prs <org>          Full-screen TUI dashboard (default)
-    open-prs <org> --once   One-shot print and exit
+    open-prs <org>                  Full-screen TUI dashboard (default)
+    open-prs <org> --once           One-shot print and exit
+    open-prs <org> --once --plain   One-shot, no colors/links (for piping or AI usage)
 
 Shows open PRs with CI status and recently merged PRs with post-merge
 workflow status. Successful deploys fade after 15 min and failures stay
@@ -116,11 +117,16 @@ def write(s: str) -> None:
     sys.stdout.flush()
 
 
+def strip_ansi(s: str) -> str:
+    """Remove all ANSI/OSC escape sequences from a string."""
+    s = re.sub(r"\033\][^\a]*\a", "", s)
+    s = re.sub(r"\033\[[0-9;]*m", "", s)
+    return s
+
+
 def visible_len(s: str) -> int:
     """Length of a string as it appears on screen (strips ANSI/OSC escapes)."""
-    stripped = re.sub(r"\033\][^\a]*\a", "", s)
-    stripped = re.sub(r"\033\[[0-9;]*m", "", stripped)
-    return len(stripped)
+    return len(strip_ansi(s))
 
 
 def osc8_link(url: str, text: str) -> str:
@@ -440,7 +446,7 @@ def render(
 
 def _render_ad_bar(cols: int) -> str:
     """Render a subtle ad bar for the bottom of the screen."""
-    link = osc8_link(AD_URL, f"{BOLD}{CYAN}{AD_TEXT}{RESET}")
+    link = osc8_link(AD_URL, f"{DIM}{AD_TEXT}{RESET}")
     pad = " " * max(cols - visible_len(f"  {AD_TEXT}  "), 0)
     return f"{DIM}{'─' * cols}{RESET}\n  {link}{pad}"
 
@@ -464,11 +470,17 @@ def _fetch_all(org: str, failed_cache: dict, loading_fn) -> tuple:
     return open_prs, deployments
 
 
-def run_once(org: str) -> None:
-    write(SET_TITLE.format(title=f"open-prs — {org}"))
-    open_prs, deployments = _fetch_all(org, {}, _show_loading)
-    write(f"\r{CLEAR_LINE}")
-    print(render(open_prs, deployments, org, watch=False))
+def run_once(org: str, plain: bool = False) -> None:
+    if not plain:
+        write(SET_TITLE.format(title=f"open-prs — {org}"))
+    loading_fn = (lambda msg: None) if plain else _show_loading
+    open_prs, deployments = _fetch_all(org, {}, loading_fn)
+    if not plain:
+        write(f"\r{CLEAR_LINE}")
+    output = render(open_prs, deployments, org, watch=False)
+    if plain:
+        output = strip_ansi(output)
+    print(output)
 
 
 def _wait_for_key(timeout: float) -> str | None:
@@ -526,13 +538,13 @@ def main() -> None:
     flags = {a for a in sys.argv[1:] if a.startswith("-")}
 
     if not args or "--help" in flags or "-h" in flags:
-        print("Usage: open-prs <org> [--once]", file=sys.stderr)
+        print("Usage: open-prs <org> [--once [--plain]]", file=sys.stderr)
         sys.exit(1 if not args else 0)
 
     org = args[0]
 
     if "--once" in flags:
-        run_once(org)
+        run_once(org, plain="--plain" in flags)
     else:
         run_watch(org)
 
