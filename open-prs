@@ -393,8 +393,8 @@ def _layout_two_columns(blocks: list[list[str]], col_width: int) -> list[str]:
 
     sep = f" {DIM}│{RESET} "
     return [
-        l + " " * max(col_width - visible_len(l), 0) + sep + r
-        for l, r in zip(left, right)
+        lc + " " * max(col_width - visible_len(lc), 0) + sep + rc
+        for lc, rc in zip(left, right)
     ]
 
 
