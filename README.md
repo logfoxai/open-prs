@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/logfoxai/open-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/logfoxai/open-prs/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![TUI](assets/tui-badge.svg)
+![TUI](https://img.shields.io/badge/%F0%9F%96%A5%EF%B8%8F_TUI-blueviolet)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776ab)
 ![Zero Dependencies](https://img.shields.io/badge/deps-zero-brightgreen)
 
