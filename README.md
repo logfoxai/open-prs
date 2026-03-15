@@ -1,30 +1,39 @@
-# `open-prs`
+# open-prs
 
 [![CI](https://github.com/logfoxai/open-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/logfoxai/open-prs/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A pretty CLI dashboard for all open PRs across a GitHub org. Includes CI status badges, post-merge deploy tracking, responsive 2-column layout, and clickable PR titles.
+**Your entire org's PRs. One terminal. Zero dependencies.**
 
-**One-shot mode** — quick glance at all open PRs:
+`open-prs` is a single-file CLI dashboard that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works.
 
-```
-open-prs myorg
-```
+No config files. No Docker. No Node modules. Just one Python script and `gh`.
 
-**Watch mode** — full-screen dashboard that polls every 5 minutes:
+<p align="center">
+  <img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
+</p>
 
-```
-open-prs myorg --watch
+## Quick Start
+
+```bash
+# Install
+curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
+chmod +x ~/.local/bin/open-prs
+
+# Run
+open-prs myorg          # one-shot
+open-prs myorg --watch  # full-screen live dashboard
 ```
 
 ## Features
 
-- **CI status badges** — pass, fail, running, or no CI — at a glance for every PR
-- **Post-merge deploy tracking** — merged PRs stay on screen while workflows run; failures persist, successes fade after 15 min
-- **Clickable PR titles** — OSC 8 hyperlinks work in iTerm2, VS Code terminal, Ghostty, etc.
-- **Responsive 2-column layout** — automatically switches when content overflows the terminal height
-- **Watch mode** — full-screen alternate buffer with keyboard controls (`r` refresh, `c` clear merged, `q` quit)
-- **Grouped by repo** — PRs organized by repository name
+- **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
+- **Post-merge deploy tracking** — merged PRs stay visible while deploy workflows run; failures stick around, successes fade after 15 min
+- **Clickable PR titles** — real hyperlinks (OSC 8) in iTerm2, VS Code terminal, Ghostty, Kitty, and more
+- **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
+- **Watch mode** — full-screen alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`), clear merged (`c`), and quit (`q`)
+- **Grouped by repo** — clean visual hierarchy, sorted alphabetically
+- **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
 
 ## Requirements
 
@@ -33,14 +42,14 @@ open-prs myorg --watch
 
 ## Installation
 
-Copy the script somewhere in your `$PATH`:
+**curl** (recommended):
 
 ```bash
 curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
 chmod +x ~/.local/bin/open-prs
 ```
 
-Or clone and symlink:
+**Clone and symlink:**
 
 ```bash
 git clone https://github.com/logfoxai/open-prs.git
@@ -53,63 +62,55 @@ ln -s "$(pwd)/open-prs/open-prs" ~/.local/bin/open-prs
 open-prs <org> [--watch]
 ```
 
-| Argument   | Description                                              |
-|------------|----------------------------------------------------------|
-| `<org>`    | GitHub organization name (required)                      |
-| `--watch`  | Full-screen polling mode (every 5 min), alias `-w`       |
+- `<org>` — GitHub organization name (required)
+- `--watch` / `-w` — full-screen polling mode (every 60s)
 
 ### Watch mode keyboard shortcuts
 
-| Key | Action                                         |
-|-----|------------------------------------------------|
-| `r` | Refresh immediately                            |
-| `c` | Clear successfully merged/deployed PRs         |
-| `q` | Quit (also `Ctrl+C`)                           |
+- `r` — Refresh immediately
+- `c` — Clear successfully merged/deployed PRs
+- `q` — Quit (also `Ctrl+C`)
 
-## CI Status Badges
+## Status Badges
 
-| Badge        | Meaning                                |
-|--------------|----------------------------------------|
-| `✓ pass`     | All CI checks passed                   |
-| `✗ fail`     | One or more checks failed              |
-| `● running`  | Checks are in progress                 |
-| `no ci`      | No status checks configured            |
+### CI (on open PRs)
 
-## Deploy Status Badges
+- `✓ pass` — All checks passed
+- `✗ fail` — One or more checks failed
+- `● running` — Checks in progress
+- `no ci` — No status checks configured
 
-After a PR is merged, if there are GitHub Actions workflows triggered by the merge:
+### Deploy (on merged PRs)
 
-| Badge          | Meaning                                |
-|----------------|----------------------------------------|
-| `✓ deployed`   | All workflows completed successfully   |
-| `✗ failed`     | One or more workflows failed           |
-| `● deploying`  | Workflows are in progress              |
-| `◦ queued`     | Workflows are queued/waiting           |
+After merge, if GitHub Actions workflows are triggered:
 
-Failed deploys persist on screen indefinitely (until resolved). Successful deploys fade after 15 minutes.
+- `✓ deployed` — All workflows completed successfully
+- `✗ failed` — One or more workflows failed
+- `● deploying` — Workflows in progress
+- `◦ queued` — Workflows are queued/waiting
+
+Failed deploys persist until resolved. Successful deploys fade after 15 minutes.
 
 ## How It Works
 
-1. Fetches open and recently merged PRs via a single GitHub GraphQL API call
-2. For each merged PR, checks workflow run status via the REST API
-3. Renders everything with ANSI colors, OSC 8 hyperlinks, and responsive column layout
-4. In watch mode, uses the terminal's alternate screen buffer for a clean full-screen experience
+1. A single GitHub GraphQL call fetches all open + recently merged PRs across the org
+2. For each merged PR, a REST call checks workflow run status
+3. Everything renders with ANSI colors, OSC 8 hyperlinks, and responsive column layout
+4. Watch mode uses the terminal's alternate screen buffer for a clean full-screen experience
 
 ## Configuration
 
-All configuration is via constants at the top of the script:
+All tunables are constants at the top of the script — no config files needed:
 
-| Constant               | Default   | Description                                      |
-|------------------------|-----------|--------------------------------------------------|
-| `POLL_SECONDS`         | `300`     | Polling interval in watch mode (seconds)          |
-| `DEPLOY_FADE_SECONDS`  | `900`     | How long successful deploys stay visible (seconds) |
-| `MERGED_LOOKBACK_HOURS`| `4`       | How far back to search for merged PRs (hours)     |
-| `TWO_COL_MIN_WIDTH`    | `100`     | Minimum terminal width for 2-column layout        |
+- `POLL_SECONDS` — Polling interval in watch mode (default: `60`)
+- `DEPLOY_FADE_SECONDS` — How long successful deploys stay visible (default: `900`)
+- `MERGED_LOOKBACK_HOURS` — How far back to search for merged PRs (default: `4`)
+- `TWO_COL_MIN_WIDTH` — Minimum terminal width for 2-column layout (default: `100`)
 
 ## Contributing
 
-- Star this repo if you like it!
-- Submit an [issue](https://github.com/logfoxai/open-prs/issues) for bugs or feature requests
+- Star this repo if you find it useful!
+- [Open an issue](https://github.com/logfoxai/open-prs/issues) for bugs or feature requests
 - PRs welcome against `main`
 
 ## License
