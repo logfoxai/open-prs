@@ -21,8 +21,9 @@ curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-pr
 chmod +x ~/.local/bin/open-prs
 
 # Run
-open-prs myorg          # full-screen live dashboard
-open-prs myorg --once   # one-shot print and exit
+open-prs myorg                 # full-screen live dashboard
+open-prs myorg --once          # one-shot print and exit
+open-prs myorg --once --plain  # plain text, no colors (for piping or AI usage)
 ```
 
 ## Features
@@ -33,6 +34,8 @@ open-prs myorg --once   # one-shot print and exit
 - **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
 - **Full-screen TUI** — alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`), clear merged (`c`), and quit (`q`)
 - **Grouped by repo** — clean visual hierarchy, sorted alphabetically
+- **Plain text mode** — `--once --plain` strips all ANSI codes for piping to AI agents, scripts, or pipelines
+- **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
 - **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
 
 ## Requirements
@@ -59,11 +62,12 @@ ln -s "$(pwd)/open-prs/open-prs" ~/.local/bin/open-prs
 ## Usage
 
 ```
-open-prs <org> [--once]
+open-prs <org> [--once [--plain]]
 ```
 
 - `<org>` — GitHub organization name (required)
 - `--once` — one-shot print and exit (default: full-screen TUI)
+- `--plain` — strip colors and links from `--once` output (for piping to scripts or AI agents)
 
 ### Keyboard shortcuts
 
@@ -71,13 +75,24 @@ open-prs <org> [--once]
 - `c` — Clear successfully merged/deployed PRs
 - `q` — Quit (also `Ctrl+C`)
 
-## Tips
+## AI Agent Integration
 
-**Give your AI context about open PRs.** The `--once` flag outputs plain text that's easy to pipe or paste. Add something like this to your AI coding assistant's rules (e.g. Cursor rules, Claude system prompt):
+`open-prs --plain` was designed for AI coding agents. One command replaces the 6-8 shell calls an agent would otherwise need to get the same cross-repo picture:
 
-> Before starting work, run `open-prs <org> --once` to see what's in flight.
+| Without open-prs | With open-prs |
+|---|---|
+| `gh pr list` per repo | Single command, all repos |
+| `gh pr checks <n>` per PR | CI status inline |
+| Multiple API calls, lots of tokens | One GraphQL call, compact output |
+| Manual context switching | Grouped by repo, sorted |
 
-This keeps your agent aware of active PRs, CI status, and in-progress deploys across the org — so it doesn't duplicate work or miss context.
+### How to use it
+
+Add this to your AI assistant's rules (Cursor rules, Claude system prompt, etc.):
+
+> Before starting work, run `open-prs <org> --once --plain` to see what's in flight.
+
+Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
 
 ## Status Badges
 
