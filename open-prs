@@ -26,7 +26,6 @@ import sys
 import termios
 import time
 import tty
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 
 # ── ANSI & terminal control ─────────────────────────────────────────────────
@@ -86,7 +85,12 @@ GRAPHQL_QUERY = """\
         title url number
         author {{ login }}
         mergedAt
-        mergeCommit {{ oid }}
+        mergeCommit {{
+          oid
+          checkSuites(first: 20) {{
+            nodes {{ status conclusion updatedAt }}
+          }}
+        }}
         repository {{ name }}
       }}
     }}
@@ -201,6 +205,7 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
     for node in nodes:
         if not node or not node.get("mergeCommit"):
             continue
+        suites = node["mergeCommit"].get("checkSuites", {}).get("nodes", [])
         prs.append({
             "repo": node["repository"]["name"],
             "title": node["title"],
@@ -208,120 +213,58 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
             "author": node["author"]["login"],
             "merged_age": time_ago(node["mergedAt"]),
             "merged_at": node["mergedAt"],
-            "sha": node["mergeCommit"]["oid"],
+            "workflow_status": _aggregate_check_suites(suites),
         })
     prs.sort(key=lambda p: (p["repo"], p["title"]))
     return prs
 
 
-def _aggregate_runs(runs: list[dict]) -> dict | None:
-    """Aggregate workflow runs into a single status."""
-    if not runs:
+def _aggregate_check_suites(suites: list[dict]) -> dict | None:
+    """Aggregate GraphQL checkSuites into a single workflow status."""
+    if not suites:
         return None
 
-    statuses = [r["status"] for r in runs]
+    statuses = [s["status"] for s in suites]
 
-    if "in_progress" in statuses:
+    if "IN_PROGRESS" in statuses:
         return {"status": "running", "completed_at": None}
-    if any(s in ("queued", "waiting") for s in statuses):
+    if any(s in ("QUEUED", "WAITING", "REQUESTED", "PENDING") for s in statuses):
         return {"status": "queued", "completed_at": None}
-    if not all(s == "completed" for s in statuses):
+    if not all(s == "COMPLETED" for s in statuses):
         return {"status": "running", "completed_at": None}
 
-    completed_at = max(parse_iso(r["updated_at"]) for r in runs)
-    has_failure = any(r.get("conclusion") == "failure" for r in runs)
+    completed_at = max(parse_iso(s["updatedAt"]) for s in suites)
+    has_failure = any(s.get("conclusion") == "FAILURE" for s in suites)
     return {
         "status": "failure" if has_failure else "success",
         "completed_at": completed_at,
     }
 
 
-def _fetch_repo_runs(org: str, repo: str, cutoff: str) -> list[dict]:
-    """Fetch all workflow runs for a repo since cutoff."""
-    try:
-        result = subprocess.run(
-            ["gh", "api",
-             f"repos/{org}/{repo}/actions/runs?created=>{cutoff}&per_page=100"],
-            capture_output=True, text=True, check=True,
-        )
-        return json.loads(result.stdout).get("workflow_runs", [])
-    except (subprocess.CalledProcessError, json.JSONDecodeError):
-        return []
-
-
-def _fetch_workflow_statuses(
-    org: str,
-    shas: set[str],
-    repos: set[str],
-    cutoff: str,
-) -> dict[str, dict | None]:
-    """Fetch workflow statuses for all SHAs, batched by repo (parallel)."""
-    repo_runs: dict[str, list[dict]] = {}
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {
-            pool.submit(_fetch_repo_runs, org, repo, cutoff): repo
-            for repo in repos
-        }
-        for future in as_completed(futures):
-            repo_runs[futures[future]] = future.result()
-
-    sha_runs: dict[str, list[dict]] = {}
-    for runs in repo_runs.values():
-        for run in runs:
-            sha = run.get("head_sha", "")
-            if sha in shas:
-                sha_runs.setdefault(sha, []).append(run)
-
-    return {sha: _aggregate_runs(sha_runs.get(sha, [])) for sha in shas}
-
-
 def build_deployments(
-    org: str,
     merged_prs: list[dict],
     failed_cache: dict[str, dict],
 ) -> list[dict]:
     """Build the list of merged PRs that should be displayed.
 
-    Mutates failed_cache so watch-mode failures persist across refreshes.
+    Workflow status is already embedded in each PR from the GraphQL query.
+    Mutates failed_cache so failures persist across refreshes in watch mode.
+    Failed deploys that fall outside the GraphQL lookback window are kept
+    visible via the cache until they succeed or are dismissed.
     """
     now = datetime.now(timezone.utc)
-    cutoff = (
-        now - timedelta(hours=MERGED_LOOKBACK_HOURS)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    seen_urls: set[str] = {pr["url"] for pr in merged_prs}
-
-    all_shas: set[str] = set()
-    all_repos: set[str] = set()
-    sha_to_url: dict[str, str] = {}
-
-    for pr in merged_prs:
-        all_shas.add(pr["sha"])
-        all_repos.add(pr["repo"])
-        sha_to_url[pr["sha"]] = pr["url"]
-
-    for url, cached in failed_cache.items():
-        if url not in seen_urls:
-            all_shas.add(cached["sha"])
-            all_repos.add(cached["pr"]["repo"])
-            sha_to_url[cached["sha"]] = url
-
-    ws_by_sha = _fetch_workflow_statuses(org, all_shas, all_repos, cutoff)
-
+    seen_urls: set[str] = set()
     deployments: list[dict] = []
+
     for pr in merged_prs:
-        ws = ws_by_sha.get(pr["sha"])
-        deployment = _resolve_deployment(pr, ws, now, failed_cache)
+        seen_urls.add(pr["url"])
+        deployment = _resolve_deployment(pr, pr["workflow_status"], now, failed_cache)
         if deployment:
             deployments.append(deployment)
 
     for url, cached in list(failed_cache.items()):
-        if url in seen_urls:
-            continue
-        ws = ws_by_sha.get(cached["sha"])
-        if ws and ws["status"] != "success":
-            deployments.append({**cached["pr"], "deploy": ws["status"]})
-        else:
-            del failed_cache[url]
+        if url not in seen_urls:
+            deployments.append({**cached["pr"], "deploy": "failure"})
 
     deployments.sort(key=lambda d: (d["repo"], d["title"]))
     return deployments
@@ -344,7 +287,7 @@ def _resolve_deployment(
         return None
 
     if ws["status"] == "failure":
-        failed_cache[url] = {"pr": pr, "sha": pr["sha"]}
+        failed_cache[url] = {"pr": pr}
         return {**pr, "deploy": "failure"}
 
     failed_cache.pop(url, None)
@@ -514,9 +457,7 @@ def _fetch_all(org: str, failed_cache: dict, loading_fn) -> tuple:
     """Fetch PRs and deployments, calling loading_fn for feedback."""
     loading_fn("Fetching PRs")
     open_prs, merged_prs = fetch_prs(org)
-    if merged_prs:
-        loading_fn("Checking workflows")
-    deployments = build_deployments(org, merged_prs, failed_cache)
+    deployments = build_deployments(merged_prs, failed_cache)
     return open_prs, deployments
 
 
