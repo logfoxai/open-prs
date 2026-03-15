@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/logfoxai/open-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/logfoxai/open-prs/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![TUI](https://img.shields.io/badge/%F0%9F%A6%8A_TUI-full--screen_dashboard-ff6600)
+![TUI](https://img.shields.io/badge/%F0%9F%96%A5%EF%B8%8F_TUI-blueviolet)
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776ab)
 ![Zero Dependencies](https://img.shields.io/badge/deps-zero-brightgreen)
 
@@ -16,19 +16,6 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
   <img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
 </p>
 
-## Quick Start
-
-```bash
-# Install
-curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
-chmod +x ~/.local/bin/open-prs
-
-# Run
-open-prs myorg                 # full-screen live dashboard
-open-prs myorg --once          # one-shot print and exit
-open-prs myorg --once --plain  # plain text, no colors (for piping or AI usage)
-```
-
 ## Features
 
 - **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
@@ -41,21 +28,26 @@ open-prs myorg --once --plain  # plain text, no colors (for piping or AI usage)
 - **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
 - **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
 
-## Requirements
+## Install
 
-- Python 3.9+
-- [GitHub CLI](https://cli.github.com/) (`gh`) — installed and authenticated
-
-## Installation
-
-**curl** (recommended):
+Requires Python 3.9+, [GitHub CLI](https://cli.github.com/) (`gh`) authenticated, and macOS or Linux (Windows is not supported).
 
 ```bash
-curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
+# 1. Make sure ~/.local/bin is in your PATH (add to ~/.zshrc or ~/.bashrc)
+export PATH="$HOME/.local/bin:$PATH"
+
+# 2. Download
+mkdir -p ~/.local/bin
+curl -fsSL -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
 chmod +x ~/.local/bin/open-prs
+
+# 3. Run
+open-prs myorg                 # full-screen live dashboard
+open-prs myorg --once          # one-shot print and exit
+open-prs myorg --once --plain  # plain text (for piping or AI agents)
 ```
 
-**Clone and symlink:**
+Or clone and symlink:
 
 ```bash
 git clone https://github.com/logfoxai/open-prs.git
