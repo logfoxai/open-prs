@@ -53,7 +53,7 @@ SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-POLL_SECONDS = 300
+POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 4
 TWO_COL_MIN_WIDTH = 100
