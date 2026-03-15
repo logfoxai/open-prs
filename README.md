@@ -21,8 +21,8 @@ curl -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-pr
 chmod +x ~/.local/bin/open-prs
 
 # Run
-open-prs myorg          # one-shot
-open-prs myorg --watch  # full-screen live dashboard
+open-prs myorg          # full-screen live dashboard
+open-prs myorg --once   # one-shot print and exit
 ```
 
 ## Features
@@ -31,7 +31,7 @@ open-prs myorg --watch  # full-screen live dashboard
 - **Post-merge deploy tracking** — merged PRs stay visible while deploy workflows run; failures stick around, successes fade after 15 min
 - **Clickable PR titles** — real hyperlinks (OSC 8) in iTerm2, VS Code terminal, Ghostty, Kitty, and more
 - **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
-- **Watch mode** — full-screen alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`), clear merged (`c`), and quit (`q`)
+- **Full-screen TUI** — alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`), clear merged (`c`), and quit (`q`)
 - **Grouped by repo** — clean visual hierarchy, sorted alphabetically
 - **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
 
@@ -59,13 +59,13 @@ ln -s "$(pwd)/open-prs/open-prs" ~/.local/bin/open-prs
 ## Usage
 
 ```
-open-prs <org> [--watch]
+open-prs <org> [--once]
 ```
 
 - `<org>` — GitHub organization name (required)
-- `--watch` / `-w` — full-screen polling mode (every 60s)
+- `--once` — one-shot print and exit (default: full-screen TUI)
 
-### Watch mode keyboard shortcuts
+### Keyboard shortcuts
 
 - `r` — Refresh immediately
 - `c` — Clear successfully merged/deployed PRs
@@ -96,13 +96,13 @@ Failed deploys persist until resolved. Successful deploys fade after 15 minutes.
 1. A single GitHub GraphQL call fetches all open + recently merged PRs across the org
 2. For each merged PR, a REST call checks workflow run status
 3. Everything renders with ANSI colors, OSC 8 hyperlinks, and responsive column layout
-4. Watch mode uses the terminal's alternate screen buffer for a clean full-screen experience
+4. The TUI uses the terminal's alternate screen buffer for a clean full-screen experience
 
 ## Configuration
 
 All tunables are constants at the top of the script — no config files needed:
 
-- `POLL_SECONDS` — Polling interval in watch mode (default: `60`)
+- `POLL_SECONDS` — Polling interval in TUI mode (default: `60`)
 - `DEPLOY_FADE_SECONDS` — How long successful deploys stay visible (default: `900`)
 - `MERGED_LOOKBACK_HOURS` — How far back to search for merged PRs (default: `4`)
 - `TWO_COL_MIN_WIDTH` — Minimum terminal width for 2-column layout (default: `100`)

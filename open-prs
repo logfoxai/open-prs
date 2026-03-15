@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
-"""List all open PRs across a GitHub org with pretty formatting.
+"""Live TUI dashboard for all open PRs across a GitHub org.
 
 Usage:
-    open-prs <org>            One-shot display
-    open-prs <org> --watch    Poll every 5 minutes, full-screen dashboard
+    open-prs <org>          Full-screen TUI dashboard (default)
+    open-prs <org> --once   One-shot print and exit
 
 Shows open PRs with CI status and recently merged PRs with post-merge
-workflow status. In watch mode, successful deploys fade after 15 min
-and failures stay on screen until resolved.
+workflow status. Successful deploys fade after 15 min and failures stay
+on screen until resolved.
 
 PR titles are clickable via OSC 8 hyperlinks (iTerm2, VS Code, etc.).
 Requires: gh (GitHub CLI), authenticated.
@@ -526,15 +526,15 @@ def main() -> None:
     flags = {a for a in sys.argv[1:] if a.startswith("-")}
 
     if not args or "--help" in flags or "-h" in flags:
-        print("Usage: open-prs <org> [--watch]", file=sys.stderr)
+        print("Usage: open-prs <org> [--once]", file=sys.stderr)
         sys.exit(1 if not args else 0)
 
     org = args[0]
 
-    if "--watch" in flags or "-w" in flags:
-        run_watch(org)
-    else:
+    if "--once" in flags:
         run_once(org)
+    else:
+        run_watch(org)
 
 
 if __name__ == "__main__":
