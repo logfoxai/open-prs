@@ -41,6 +41,7 @@ WHITE = "\033[37m"
 BG_RED = "\033[41m"
 BG_GREEN = "\033[42m"
 BG_YELLOW = "\033[43m"
+BG_MAGENTA = "\033[45m"
 
 HIDE_CURSOR = "\033[?25l"
 SHOW_CURSOR = "\033[?25h"
@@ -107,6 +108,7 @@ DEPLOY_BADGES = {
     "failure":  f"{BG_RED}{BOLD}{WHITE} ✗ failed    {RESET} ",
     "running":  f"{BG_YELLOW}{BOLD}{WHITE} ● deploying {RESET} ",
     "queued":   f"{BG_YELLOW}{BOLD}{WHITE} ◦ queued    {RESET} ",
+    "merged":   f"{BG_MAGENTA}{BOLD}{WHITE} ✓ merged    {RESET} ",
 }
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -204,6 +206,7 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
             "url": node["url"],
             "author": node["author"]["login"],
             "merged_age": time_ago(node["mergedAt"]),
+            "merged_at": node["mergedAt"],
             "sha": node["mergeCommit"]["oid"],
         })
     prs.sort(key=lambda p: (p["repo"], p["title"]))
@@ -292,6 +295,9 @@ def _resolve_deployment(
 
     if ws is None:
         failed_cache.pop(url, None)
+        elapsed = (now - parse_iso(pr["merged_at"])).total_seconds()
+        if elapsed < DEPLOY_FADE_SECONDS:
+            return {**pr, "deploy": "merged"}
         return None
 
     if ws["status"] == "failure":
