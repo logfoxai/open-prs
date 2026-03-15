@@ -471,12 +471,7 @@ def _fetch_all(org: str, failed_cache: dict, loading_fn) -> tuple:
 
 
 def run_once(org: str, plain: bool = False) -> None:
-    if not plain:
-        write(SET_TITLE.format(title=f"open-prs — {org}"))
-    loading_fn = (lambda msg: None) if plain else _show_loading
-    open_prs, deployments = _fetch_all(org, {}, loading_fn)
-    if not plain:
-        write(f"\r{CLEAR_LINE}")
+    open_prs, deployments = _fetch_all(org, {}, lambda msg: None)
     output = render(open_prs, deployments, org, watch=False)
     if plain:
         output = strip_ansi(output)
