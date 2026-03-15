@@ -121,11 +121,10 @@ All tunables are constants at the top of the script — no config files needed:
 
 <div align="center">
 
-### Built by the team behind [Logfox](https://aeroview.io)
+### Built by the team behind [Logfox](https://logfox.ai)
 
-**Stop digging through logs. Start finding bugs.**<br>
-AI-powered log monitoring that detects issues before your users do.
+**Issues, not log soup.** AI-powered log observability that detects issues before your users do.
 
-[**Try the free beta →**](https://app.aeroview.io)
+[**Try the free beta →**](https://app.logfox.ai)
 
 </div>
