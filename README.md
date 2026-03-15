@@ -80,7 +80,7 @@ open-prs <org> [--once [--plain]]
 
 ## AI Agent Integration
 
-`open-prs --plain` was designed for AI coding agents. One command replaces the 6-8 shell calls an agent would otherwise need to get the same cross-repo picture:
+`open-prs --once --plain` was designed for AI coding agents. One command replaces the 6-8 shell calls an agent would otherwise need to get the same cross-repo picture:
 
 | Without open-prs | With open-prs |
 |---|---|
