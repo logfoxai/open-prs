@@ -36,6 +36,12 @@ macOS or Linux. Requires `gh` authenticated — run `gh auth login` first.
 brew install logfoxai/tap/open-prs
 ```
 
+### Upgrade
+
+```bash
+brew update && brew upgrade open-prs
+```
+
 ### Manual (curl)
 
 Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`).
