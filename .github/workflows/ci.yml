@@ -24,4 +24,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python open-prs --help || true
+      - name: Help works
+        run: python open-prs --help | grep -q "Usage"
+      - name: No args exits 1
+        run: '! python open-prs'
