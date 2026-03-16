@@ -19,11 +19,13 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 ## Features
 
 - **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
-- **Inline failure details** — failed PRs show the workflow and step name (e.g., `CI#21 · Install deps`) so you can tell at a glance what broke — no clicking through GitHub's slow UI to find the issue. Click the link if you need more.
+- **Merge conflict detection** — PRs with conflicts show a red `⚠ conflict` badge
+- **Inline failure details** — failed PRs show the workflow and step name (e.g., `CI#21 · Install deps`) so you can tell at a glance what broke — no clicking through GitHub's slow UI to find the issue
+- **PR numbers** — each title shows its PR number for quick reference: `feat: something…(#43)`
 - **Post-merge deploy tracking** — merged PRs stay visible while deploy workflows run; failures stick around, successes fade after 15 min
 - **Clickable PR titles** — real hyperlinks (OSC 8) in iTerm2, VS Code terminal, Ghostty, Kitty, and more
 - **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
-- **Full-screen TUI** — alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`), clear merged (`c`), and quit (`q`)
+- **Full-screen TUI** — alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`) and quit (`q`)
 - **Grouped by repo** — clean visual hierarchy, sorted alphabetically
 - **Plain text mode** — `--once --plain` strips all ANSI codes for piping to AI agents, scripts, or pipelines
 - **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
@@ -68,7 +70,6 @@ open-prs <org> [--once [--plain]]
 ### Keyboard shortcuts
 
 - `r` — Refresh immediately
-- `c` — Clear successfully merged/deployed PRs
 - `q` — Quit (also `Ctrl+C`)
 
 ## AI Agent Integration
@@ -97,6 +98,7 @@ Adding `--plain` strips ANSI codes so the output is clean text your agent can pa
 - `✓ pass` — All checks passed
 - `✗ fail` — One or more checks failed
 - `● running` — Checks in progress
+- `⚠ conflict` — PR has merge conflicts
 - `no ci` — No status checks configured
 
 ### Merged / Deploy (on merged PRs)
