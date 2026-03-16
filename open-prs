@@ -72,7 +72,7 @@ GRAPHQL_QUERY = """\
   open: search(query: "org:{org} is:pr is:open", type: ISSUE, first: 100) {{
     nodes {{
       ... on PullRequest {{
-        title url number mergeable
+        title url number mergeable headRefName
         author {{ login }}
         createdAt
         repository {{ name owner {{ login }} }}
@@ -90,7 +90,7 @@ GRAPHQL_QUERY = """\
   merged: search(query: "org:{org} is:pr is:merged merged:>{cutoff}", type: ISSUE, first: 50) {{
     nodes {{
       ... on PullRequest {{
-        title url number
+        title url number headRefName
         author {{ login }}
         mergedAt
         mergeCommit {{
@@ -221,6 +221,7 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
             "url": node["url"],
             "author": node["author"]["login"],
             "age": time_ago(node["createdAt"]),
+            "branch": node.get("headRefName"),
             "ci": ci,
             "failures": failures,
         })
@@ -306,6 +307,7 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
             "author": node["author"]["login"],
             "merged_age": time_ago(node["mergedAt"]),
             "merged_at": node["mergedAt"],
+            "branch": node.get("headRefName"),
             "workflow_status": status,
             "failures": failures,
         })
@@ -411,10 +413,17 @@ def _render_pr(item: dict, width: int) -> list[str]:
             f"{RED}merged{RESET}{DIM}" if item["deploy"] == "failure"
             else "merged"
         )
-        meta = f"{item['author']} · {merged_label} {item['merged_age']} ago"
+        base_meta = f"{item['author']} · {merged_label} {item['merged_age']} ago"
     else:
         badge = CI_BADGES.get(item.get("ci"), CI_BADGES[None])
-        meta = f"{item['author']} · {item['age']} ago"
+        base_meta = f"{item['author']} · {item['age']} ago"
+
+    meta = base_meta
+    if item.get("branch"):
+        meta_with_branch = f"{base_meta} · {item['branch']}"
+        max_meta_width = width - BADGE_WIDTH - 4
+        if visible_len(meta_with_branch) <= max_meta_width:
+            meta = meta_with_branch
 
     pad = " " * (BADGE_WIDTH - visible_len(badge))
 
