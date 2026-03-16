@@ -24,4 +24,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python open-prs --help || true
+      - name: Help works
+        run: python open-prs --help 2>&1 | grep -q "Usage"
+      - name: No args exits 1
+        run: '! python open-prs'
+      - name: Fetch PRs (with GITHUB_TOKEN)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y gh
+          python open-prs logfoxai --once --plain | grep -q "PRs"

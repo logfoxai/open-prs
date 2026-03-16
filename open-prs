@@ -108,8 +108,8 @@ GRAPHQL_QUERY = """\
 # ── badges ───────────────────────────────────────────────────────────────────
 
 CI_BADGES = {
-    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ pass {RESET} ",
-    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ fail {RESET} ",
+    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ passed {RESET} ",
+    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ failed {RESET} ",
     "ERROR":      f"{BG_RED}{BOLD}{WHITE} ✗ err  {RESET} ",
     "PENDING":    f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
     "EXPECTED":   f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
@@ -699,7 +699,7 @@ def main() -> None:
 
     if not args or "--help" in flags or "-h" in flags:
         print("Usage: open-prs <org> [--once [--plain]]", file=sys.stderr)
-        sys.exit(1 if not args else 0)
+        sys.exit(0 if ("--help" in flags or "-h" in flags) else 1)
 
     org = args[0]
 

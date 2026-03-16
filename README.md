@@ -17,7 +17,7 @@ Works great with [AI coding agents](#ai-agent-integration) too — one command g
 
 ## Features
 
-- **Live CI badges** — pass, fail, running, or no CI for every PR
+- **Live CI badges** — passed, failed, running, or no CI for every PR
 - **Merge conflict detection** — red `⚠ conflict` badge when a PR has conflicts
 - **Inline failure details** — failed PRs show workflow and step name so you see what broke without opening GitHub's slow UI
 - **PR numbers** — each title shows its number: `feat: something…(#43)`
@@ -102,8 +102,8 @@ Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent ru
 
 ### CI (on open PRs)
 
-- `✓ pass` — All checks passed
-- `✗ fail` — One or more checks failed
+- `✓ passed` — All checks passed
+- `✗ failed` — One or more checks failed
 - `● running` — Checks in progress
 - `⚠ conflict` — PR has merge conflicts
 - `no ci` — No status checks configured
