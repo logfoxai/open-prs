@@ -19,6 +19,7 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 ## Features
 
 - **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
+- **Inline failure details** — failed PRs show the workflow and step name (e.g., `CI#21 · Install deps`) so you can tell at a glance what broke — no clicking through GitHub's slow UI to find the issue. Click the link if you need more.
 - **Post-merge deploy tracking** — merged PRs stay visible while deploy workflows run; failures stick around, successes fade after 15 min
 - **Clickable PR titles** — real hyperlinks (OSC 8) in iTerm2, VS Code terminal, Ghostty, Kitty, and more
 - **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
