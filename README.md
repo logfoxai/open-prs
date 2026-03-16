@@ -38,7 +38,7 @@ brew install logfoxai/tap/open-prs
 
 ### Manual (curl)
 
-Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`) — run `gh auth login` first.
+Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`).
 
 ```bash
 mkdir -p ~/.local/bin
