@@ -13,7 +13,7 @@ Works great with [AI coding agents](#ai-agent-integration) too — one command g
 
 > **Note: Requires `gh auth login` first.**
 
-<img src="assets/screenshot-v1.png" alt="open-prs watch mode" />
+<img src="assets/screenshot-v2.png" alt="open-prs watch mode" />
 
 ## Features
 
