@@ -1,12 +1,11 @@
-# open-prs
+# 🦊 open-prs
 
 [![CI](https://github.com/logfoxai/open-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/logfoxai/open-prs/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Homebrew](https://img.shields.io/badge/Homebrew-install-FBB040?logo=homebrew)](https://github.com/logfoxai/homebrew-tap)
 ![TUI](https://img.shields.io/badge/%F0%9F%96%A5%EF%B8%8F_TUI-blueviolet)
-![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776ab)
-![Zero Dependencies](https://img.shields.io/badge/deps-zero-brightgreen)
 
-**Your entire org's PRs. One terminal. Zero dependencies.**
+**Your entire org's PRs. One terminal.**
 
 `open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
@@ -29,32 +28,44 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 - **Grouped by repo** — clean visual hierarchy, sorted alphabetically
 - **Plain text mode** — `--once --plain` strips all ANSI codes for piping to AI agents, scripts, or pipelines
 - **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
-- **Single file, zero deps** — runs on any machine with Python 3.9+ and `gh`
+- **Single file** — runs on any machine with Python 3.9+ and `gh`
 
 ## Install
 
-Requires Python 3.9+, [GitHub CLI](https://cli.github.com/) (`gh`) authenticated, and macOS or Linux (Windows is not supported).
+macOS or Linux. Homebrew installs Python and `gh` for you; manual install requires them already on your system.
+
+### Homebrew
 
 ```bash
-# 1. Make sure ~/.local/bin is in your PATH (add to ~/.zshrc or ~/.bashrc)
-export PATH="$HOME/.local/bin:$PATH"
+brew install logfoxai/tap/open-prs
+```
 
-# 2. Download
+### Manual (curl)
+
+Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`) authenticated.
+
+```bash
 mkdir -p ~/.local/bin
 curl -fsSL -o ~/.local/bin/open-prs https://raw.githubusercontent.com/logfoxai/open-prs/main/open-prs
 chmod +x ~/.local/bin/open-prs
+```
 
-# 3. Run
+Add to your shell config so `open-prs` is on your PATH:
+
+```bash
+# zsh (default on macOS)
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+
+# bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+### Run
+
+```bash
 open-prs myorg                 # full-screen live dashboard
 open-prs myorg --once          # one-shot print and exit
 open-prs myorg --once --plain  # plain text (for piping or AI agents)
-```
-
-Or clone and symlink:
-
-```bash
-git clone https://github.com/logfoxai/open-prs.git
-ln -s "$(pwd)/open-prs/open-prs" ~/.local/bin/open-prs
 ```
 
 ## Usage
