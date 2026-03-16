@@ -87,7 +87,9 @@ open-prs <org> [--once [--plain]]
 
 ## AI Agent Integration
 
-`open-prs --once --plain` was designed for AI coding agents. One command replaces the 6-8 shell calls an agent would otherwise need to get the same cross-repo picture:
+### Agentic workflows
+
+When you work in PRs a lot — especially in agentic workflows where an AI creates, reviews, or iterates on pull requests across many repos — you need cross-repo context at a glance. `open-prs` gives you the full picture: what's open, what's failing CI, what just merged, and what's deploying. One command replaces the 6–8 shell calls an agent would otherwise need:
 
 | Without open-prs | With open-prs |
 |---|---|
@@ -96,13 +98,19 @@ open-prs <org> [--once [--plain]]
 | Multiple API calls, lots of tokens | One GraphQL call, compact output |
 | Manual context switching | Grouped by repo, sorted |
 
-### How to use it
+### Plain text for agents
 
-Add this to your AI assistant's rules (Cursor rules, Claude system prompt, etc.):
+Agents consume `open-prs` via the plain text command:
+
+```bash
+open-prs <org> --once --plain
+```
+
+`--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences. Add this to your assistant's rules (Cursor rules, Claude system prompt, etc.):
 
 > Before starting work, run `open-prs <org> --once --plain` to see what's in flight.
 
-Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent runs. Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
+Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent runs.
 
 ## Status Badges
 
