@@ -166,7 +166,7 @@ All tunables are constants at the top of the script — no config files needed:
 
 ### Built by the team behind [Logfox](https://logfox.ai)
 
-**Issues, not log soup.** AI-powered log observability that detects issues before your users do.
+**Sniff out issues.** AI-powered log observability that detects issues before your users do.
 
 [**Try the free beta →**](https://app.logfox.ai)
 
