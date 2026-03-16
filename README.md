@@ -28,7 +28,7 @@ Works great with [AI coding agents](#ai-agent-integration) too — one command g
 
 ## Install
 
-macOS or Linux. Requires `gh` authenticated — run `gh auth login` first. Homebrew installs Python and `gh` for you; manual install requires them already on your system.
+macOS or Linux. Requires `gh` authenticated — run `gh auth login` first.
 
 ### Homebrew
 
