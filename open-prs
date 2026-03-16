@@ -108,8 +108,8 @@ GRAPHQL_QUERY = """\
 # ── badges ───────────────────────────────────────────────────────────────────
 
 CI_BADGES = {
-    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ pass {RESET} ",
-    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ fail {RESET} ",
+    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ passed {RESET} ",
+    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ failed {RESET} ",
     "ERROR":      f"{BG_RED}{BOLD}{WHITE} ✗ err  {RESET} ",
     "PENDING":    f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
     "EXPECTED":   f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
