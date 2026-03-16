@@ -28,3 +28,9 @@ jobs:
         run: python open-prs --help | grep -q "Usage"
       - name: No args exits 1
         run: '! python open-prs'
+      - name: Fetch PRs (with GITHUB_TOKEN)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y gh
+          python open-prs logfoxai --once --plain | grep -q "PRs"
