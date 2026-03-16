@@ -36,11 +36,10 @@ macOS or Linux. Requires `gh` authenticated — run `gh auth login` first.
 brew install logfoxai/tap/open-prs
 ```
 
-**Upgrade:** Because `open-prs` is installed from a tap, update the tap first so Homebrew sees the latest formula:
+### Upgrade
 
 ```bash
-brew update
-brew upgrade open-prs
+brew update && brew upgrade open-prs
 ```
 
 ### Manual (curl)
