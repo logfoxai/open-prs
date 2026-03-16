@@ -13,7 +13,7 @@ Works great with [AI coding agents](#ai-agent-integration) too — one command g
 
 > **Note: Requires `gh auth login` first.**
 
-<img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
+<img src="assets/screenshot.png" alt="open-prs watch mode" />
 
 ## Features
 
@@ -87,26 +87,25 @@ open-prs <org> [--once [--plain]]
 
 ## AI Agent Integration
 
-### Agentic workflows
+### Use the TUI to manage agentic workflows
 
-When you work in PRs a lot — especially in agentic workflows where an AI creates, reviews, or iterates on pull requests across many repos — you need cross-repo context at a glance. `open-prs` gives you the full picture: what's open, what's failing CI, what just merged, and what's deploying. One command replaces the 6–8 shell calls an agent would otherwise need:
+When an AI agent is creating, reviewing, or iterating on PRs across many repos, you need to see what's happening without context-switching. Run `open-prs` in a persistent spot and glance at it:
 
-| Without open-prs | With open-prs |
-|---|---|
-| `gh pr list` per repo | Single command, all repos |
-| `gh pr checks <n>` per PR | CI status inline |
-| Multiple API calls, lots of tokens | One GraphQL call, compact output |
-| Manual context switching | Grouped by repo, sorted |
+- **Large monitor** — Keep it in the bottom-right corner of a second screen. One command, full org view: what's open, what's failing CI, what just merged, what's deploying.
+- **VS Code terminal** — Run it in a dedicated terminal tab. It stays live while you (or your agent) work in other tabs.
+- **iTerm / Kitty / Ghostty** — Same idea: a small window or split that stays open.
+
+You get cross-repo context at a glance instead of running `gh pr list` and `gh pr checks` per repo.
 
 ### Plain text for agents
 
-Agents consume `open-prs` via the plain text command:
+Give your agent the same context via the plain text command:
 
 ```bash
 open-prs <org> --once --plain
 ```
 
-`--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences. Add this to your assistant's rules (Cursor rules, Claude system prompt, etc.):
+`--plain` strips ANSI codes so the output is clean text your agent can parse. Add this to your assistant's rules (Cursor rules, Claude system prompt, etc.):
 
 > Before starting work, run `open-prs <org> --once --plain` to see what's in flight.
 
