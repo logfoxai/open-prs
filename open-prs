@@ -24,8 +24,10 @@ import shutil
 import subprocess
 import sys
 import termios
+import threading
 import time
 import tty
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 # ── ANSI & terminal control ─────────────────────────────────────────────────
@@ -72,9 +74,14 @@ GRAPHQL_QUERY = """\
         title url number
         author {{ login }}
         createdAt
-        repository {{ name }}
+        repository {{ name owner {{ login }} }}
         commits(last: 1) {{
-          nodes {{ commit {{ statusCheckRollup {{ state }} }} }}
+          nodes {{ commit {{
+            statusCheckRollup {{ state }}
+            checkSuites(first: 10) {{
+              nodes {{ conclusion workflowRun {{ workflow {{ name }} databaseId runNumber url }} }}
+            }}
+          }} }}
         }}
       }}
     }}
@@ -88,10 +95,10 @@ GRAPHQL_QUERY = """\
         mergeCommit {{
           oid
           checkSuites(first: 20) {{
-            nodes {{ status conclusion updatedAt }}
+            nodes {{ status conclusion updatedAt workflowRun {{ workflow {{ name }} databaseId runNumber url }} }}
           }}
         }}
-        repository {{ name }}
+        repository {{ name owner {{ login }} }}
       }}
     }}
   }}
@@ -187,17 +194,85 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
     for node in nodes:
         if not node:
             continue
-        rollup = node["commits"]["nodes"][0]["commit"]["statusCheckRollup"]
+        commit = node["commits"]["nodes"][0]["commit"]
+        rollup = commit["statusCheckRollup"]
+        suites = commit.get("checkSuites", {}).get("nodes", [])
+        failures = _extract_failures(suites, node["repository"])
         prs.append({
             "repo": node["repository"]["name"],
+            "org": node["repository"]["owner"]["login"],
             "title": node["title"],
             "url": node["url"],
             "author": node["author"]["login"],
             "age": time_ago(node["createdAt"]),
             "ci": rollup["state"] if rollup else None,
+            "failures": failures,
         })
     prs.sort(key=lambda p: (p["repo"], p["title"]))
     return prs
+
+
+def _extract_failures(suites: list[dict], repo: dict) -> list[dict]:
+    """Extract failed workflow info from checkSuites."""
+    failures = []
+    for suite in suites:
+        if suite.get("conclusion") != "FAILURE":
+            continue
+        run = suite.get("workflowRun")
+        if not run:
+            continue
+        failures.append({
+            "workflow": run["workflow"]["name"] if run.get("workflow") else "CI",
+            "run_number": run.get("runNumber"),
+            "run_id": run.get("databaseId"),
+            "url": run.get("url"),
+            "org": repo["owner"]["login"],
+            "repo": repo["name"],
+        })
+    return failures
+
+
+def _fetch_failed_step(failure: dict) -> str | None:
+    """Fetch the failed step name for a single failure via REST API."""
+    org = failure.get("org")
+    repo = failure.get("repo")
+    run_id = failure.get("run_id")
+    if not all([org, repo, run_id]):
+        return None
+
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{org}/{repo}/actions/runs/{run_id}/jobs"],
+            capture_output=True, text=True, check=True,
+        )
+        jobs = json.loads(result.stdout).get("jobs", [])
+        for job in jobs:
+            if job.get("conclusion") == "failure":
+                for step in job.get("steps", []):
+                    if step.get("conclusion") == "failure":
+                        return step.get("name")
+        return None
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        return None
+
+
+def _fetch_all_failed_steps(failures: list[dict]) -> dict[int, str]:
+    """Fetch failed step names for all failures in parallel. Returns {run_id: step_name}."""
+    if not failures:
+        return {}
+
+    results: dict[int, str] = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        future_to_run_id = {
+            pool.submit(_fetch_failed_step, f): f.get("run_id")
+            for f in failures if f.get("run_id")
+        }
+        for future in future_to_run_id:
+            run_id = future_to_run_id[future]
+            step_name = future.result()
+            if step_name:
+                results[run_id] = step_name
+    return results
 
 
 def _parse_merged_nodes(nodes: list) -> list[dict]:
@@ -206,39 +281,43 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
         if not node or not node.get("mergeCommit"):
             continue
         suites = node["mergeCommit"].get("checkSuites", {}).get("nodes", [])
+        status, failures = _aggregate_check_suites(suites, node["repository"])
         prs.append({
             "repo": node["repository"]["name"],
+            "org": node["repository"]["owner"]["login"],
             "title": node["title"],
             "url": node["url"],
             "author": node["author"]["login"],
             "merged_age": time_ago(node["mergedAt"]),
             "merged_at": node["mergedAt"],
-            "workflow_status": _aggregate_check_suites(suites),
+            "workflow_status": status,
+            "failures": failures,
         })
     prs.sort(key=lambda p: (p["repo"], p["title"]))
     return prs
 
 
-def _aggregate_check_suites(suites: list[dict]) -> dict | None:
-    """Aggregate GraphQL checkSuites into a single workflow status."""
+def _aggregate_check_suites(suites: list[dict], repo: dict) -> tuple[dict | None, list[dict]]:
+    """Aggregate GraphQL checkSuites into a single workflow status and failures list."""
     if not suites:
-        return None
+        return None, []
 
     statuses = [s["status"] for s in suites]
+    failures = _extract_failures(suites, repo)
 
     if "IN_PROGRESS" in statuses:
-        return {"status": "running", "completed_at": None}
+        return {"status": "running", "completed_at": None}, failures
     if any(s in ("QUEUED", "WAITING", "REQUESTED", "PENDING") for s in statuses):
-        return {"status": "queued", "completed_at": None}
+        return {"status": "queued", "completed_at": None}, failures
     if not all(s == "COMPLETED" for s in statuses):
-        return {"status": "running", "completed_at": None}
+        return {"status": "running", "completed_at": None}, failures
 
     completed_at = max(parse_iso(s["updatedAt"]) for s in suites)
     has_failure = any(s.get("conclusion") == "FAILURE" for s in suites)
     return {
         "status": "failure" if has_failure else "success",
         "completed_at": completed_at,
-    }
+    }, failures
 
 
 def build_deployments(
@@ -264,7 +343,7 @@ def build_deployments(
 
     for url, cached in list(failed_cache.items()):
         if url not in seen_urls:
-            deployments.append({**cached["pr"], "deploy": "failure"})
+            deployments.append({**cached["pr"], "deploy": "failure", "failures": cached["pr"].get("failures", [])})
 
     deployments.sort(key=lambda d: (d["repo"], d["title"]))
     return deployments
@@ -288,7 +367,7 @@ def _resolve_deployment(
 
     if ws["status"] == "failure":
         failed_cache[url] = {"pr": pr}
-        return {**pr, "deploy": "failure"}
+        return {**pr, "deploy": "failure", "failures": pr.get("failures", [])}
 
     failed_cache.pop(url, None)
 
@@ -307,7 +386,7 @@ def _resolve_deployment(
 
 
 def _render_pr(item: dict, width: int) -> list[str]:
-    """Render a PR as 2 lines: badge + clickable title, then metadata."""
+    """Render a PR as 2-3 lines: badge + clickable title, metadata, and optionally failure details."""
     is_deploy = bool(item.get("deploy"))
 
     if is_deploy:
@@ -329,10 +408,48 @@ def _render_pr(item: dict, width: int) -> list[str]:
         title = title[: max(max_title - 1, 11)] + "…"
 
     indent = " " * (BADGE_WIDTH + 2)
-    return [
+    lines = [
         f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title}{RESET}')}",
         f"  {indent}{DIM}{meta}{RESET}",
     ]
+
+    is_failure = (is_deploy and item["deploy"] == "failure") or (not is_deploy and item.get("ci") == "FAILURE")
+    if is_failure:
+        failure_line = _render_failure_line(item.get("failures", []), width - BADGE_WIDTH - 4)
+        if failure_line:
+            lines.append(f"  {indent}{DIM}{failure_line}{RESET}")
+
+    return lines
+
+
+def _render_failure_line(failures: list[dict], max_width: int) -> str:
+    """Render failure details as a dim line with clickable workflow links."""
+    if not failures:
+        return ""
+
+    parts = []
+    for f in failures:
+        workflow = f.get("workflow", "CI")
+        run_num = f.get("run_number", "?")
+        url = f.get("url", "")
+        step = f.get("step_name")
+
+        link_text = f"{workflow}#{run_num}"
+        if url:
+            link = osc8_link(url, link_text)
+        else:
+            link = link_text
+
+        if step:
+            step_display = step[:30] + "…" if len(step) > 30 else step
+            parts.append(f"{link} · {step_display}")
+        else:
+            parts.append(link)
+
+    result = ", ".join(parts)
+    if len(strip_ansi(result)) > max_width:
+        result = strip_ansi(result)[:max_width - 1] + "…"
+    return result
 
 
 def _build_header(org: str, n_open: int, n_merged: int, watch: bool) -> str:
@@ -484,10 +601,30 @@ def _wait_for_key(timeout: float) -> str | None:
             return sys.stdin.read(1)
 
 
+def _collect_all_failures(open_prs: list[dict], deployments: list[dict]) -> list[dict]:
+    """Collect all failures from open PRs and deployments for step name fetching."""
+    failures = []
+    for pr in open_prs:
+        failures.extend(pr.get("failures", []))
+    for d in deployments:
+        failures.extend(d.get("failures", []))
+    return failures
+
+
+def _apply_step_names(items: list[dict], step_names: dict[int, str]) -> None:
+    """Apply fetched step names to failure dicts in-place."""
+    for item in items:
+        for f in item.get("failures", []):
+            run_id = f.get("run_id")
+            if run_id and run_id in step_names:
+                f["step_name"] = step_names[run_id]
+
+
 def run_watch(org: str) -> None:
     old_settings = termios.tcgetattr(sys.stdin)
     failed_cache: dict[str, dict] = {}
     dismissed: set[str] = set()
+    step_names_cache: dict[int, str] = {}
 
     write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
@@ -506,7 +643,25 @@ def run_watch(org: str) -> None:
                 org, failed_cache, _show_loading_alt,
             )
             visible = [d for d in deployments if d["url"] not in dismissed]
+
+            _apply_step_names(open_prs, step_names_cache)
+            _apply_step_names(visible, step_names_cache)
             _draw(open_prs, visible)
+
+            all_failures = _collect_all_failures(open_prs, visible)
+            new_failures = [f for f in all_failures if f.get("run_id") and f.get("run_id") not in step_names_cache]
+
+            if new_failures:
+                def fetch_and_redraw():
+                    new_steps = _fetch_all_failed_steps(new_failures)
+                    if new_steps:
+                        step_names_cache.update(new_steps)
+                        _apply_step_names(open_prs, step_names_cache)
+                        _apply_step_names(visible, step_names_cache)
+                        _draw(open_prs, visible)
+
+                thread = threading.Thread(target=fetch_and_redraw, daemon=True)
+                thread.start()
 
             key = _wait_for_key(POLL_SECONDS)
             if key in ("q", "\x03"):
