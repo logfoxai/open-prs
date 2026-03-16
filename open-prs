@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import re
 import select
+import signal
 import shutil
 import subprocess
 import sys
@@ -427,29 +428,28 @@ def _render_failure_line(failures: list[dict], max_width: int) -> str:
     if not failures:
         return ""
 
-    parts = []
-    for f in failures:
-        workflow = f.get("workflow", "CI")
-        run_num = f.get("run_number", "?")
-        url = f.get("url", "")
-        step = f.get("step_name")
+    f = failures[0]
+    workflow = f.get("workflow", "CI")
+    run_num = f.get("run_number", "?")
+    url = f.get("url", "")
+    step = f.get("step_name")
 
-        link_text = f"{workflow}#{run_num}"
-        if url:
-            link = osc8_link(url, link_text)
+    link_text = f"{workflow}#{run_num}"
+    link_len = len(link_text)
+
+    if step:
+        available = max_width - link_len - 3
+        if available > 5:
+            step_display = step[:available - 1] + "…" if len(step) > available else step
+            result_text = f"{link_text} · {step_display}"
         else:
-            link = link_text
+            result_text = link_text
+    else:
+        result_text = link_text
 
-        if step:
-            step_display = step[:30] + "…" if len(step) > 30 else step
-            parts.append(f"{link} · {step_display}")
-        else:
-            parts.append(link)
-
-    result = ", ".join(parts)
-    if len(strip_ansi(result)) > max_width:
-        result = strip_ansi(result)[:max_width - 1] + "…"
-    return result
+    if url:
+        return osc8_link(url, result_text)
+    return result_text
 
 
 def _build_header(org: str, n_open: int, n_merged: int, watch: bool) -> str:
@@ -459,9 +459,7 @@ def _build_header(org: str, n_open: int, n_merged: int, watch: bool) -> str:
 
     header = f"{BOLD}{CYAN}PRs{RESET} {DIM}({org}, {counts})"
     if watch:
-        now_str = datetime.now().strftime("%H:%M:%S")
         header += (
-            f"  ·  updated {now_str}"
             f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh"
             f"  {RESET}{BOLD}c{RESET}{DIM} clear merged"
             f"  {RESET}{BOLD}q{RESET}{DIM} quit"
@@ -519,6 +517,7 @@ def render(
     org: str,
     watch: bool,
     plain: bool = False,
+    max_rows: int | None = None,
 ) -> str:
     cols, rows = shutil.get_terminal_size((80, 24))
     header = _build_header(org, len(open_prs), len(deployments), watch)
@@ -528,8 +527,12 @@ def render(
         return f"{header}\n\n  {DIM}No PRs.{RESET}\n"
 
     num_groups = len(groups)
-    total_items = sum(len(g) for g in groups.values())
-    single_col_lines = 2 + num_groups * 2 + total_items * 2
+    all_items = [item for g in groups.values() for item in g]
+    failure_count = sum(
+        1 for item in all_items
+        if (item.get("deploy") == "failure") or (item.get("ci") == "FAILURE")
+    )
+    single_col_lines = 2 + num_groups * 2 + len(all_items) * 2 + failure_count
     use_two_cols = not plain and cols >= TWO_COL_MIN_WIDTH and single_col_lines > rows
     col_width = (cols - 3) // 2 if use_two_cols else cols
 
@@ -542,13 +545,17 @@ def render(
 
     if use_two_cols:
         body = _layout_two_columns(blocks, col_width)
-        return "\n".join([header, ""] + body)
+        all_lines = [header, ""] + body
+    else:
+        all_lines = [header]
+        for block in blocks:
+            all_lines.append("")
+            all_lines.extend(block)
 
-    out = [header]
-    for block in blocks:
-        out.append("")
-        out.extend(block)
-    return "\n".join(out)
+    if max_rows and len(all_lines) > max_rows:
+        all_lines = all_lines[:max_rows - 1] + [f"  {DIM}… +{len(all_lines) - max_rows + 1} more{RESET}"]
+
+    return "\n".join(all_lines)
 
 
 # ── run modes ────────────────────────────────────────────────────────────────
@@ -625,6 +632,7 @@ def run_watch(org: str) -> None:
     failed_cache: dict[str, dict] = {}
     dismissed: set[str] = set()
     step_names_cache: dict[int, str] = {}
+    current_state: dict = {"open_prs": [], "visible": []}
 
     write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
@@ -632,11 +640,18 @@ def run_watch(org: str) -> None:
         tty.setcbreak(sys.stdin.fileno())
 
         def _draw(open_prs, visible):
+            current_state["open_prs"] = open_prs
+            current_state["visible"] = visible
             cols, rows = shutil.get_terminal_size((80, 24))
-            output = render(open_prs, visible, org, watch=True)
+            output = render(open_prs, visible, org, watch=True, max_rows=rows - 2)
             ad = _render_ad_bar(cols)
             bottom = MOVE_TO_ROW.format(row=rows - 1)
             write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{bottom}{ad}")
+
+        def _on_resize(signum, frame):
+            _draw(current_state["open_prs"], current_state["visible"])
+
+        signal.signal(signal.SIGWINCH, _on_resize)
 
         while True:
             open_prs, deployments = _fetch_all(
