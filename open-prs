@@ -63,7 +63,7 @@ DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 4
 TWO_COL_MIN_WIDTH = 100
 AD_URL = "https://app.logfox.ai"
-AD_TEXT = "🦊 Logfox — Issues, not log soup. AI-powered log observability →"
+AD_TEXT = "🦊 Logfox — Sniff out issues. AI-powered log observability →"
 
 # ── GraphQL ──────────────────────────────────────────────────────────────────
 
