@@ -418,12 +418,24 @@ def _render_pr(item: dict, width: int) -> list[str]:
         badge = CI_BADGES.get(item.get("ci"), CI_BADGES[None])
         base_meta = f"{item['author']} · {item['age']} ago"
 
+    # Build meta line with branch (truncated if needed, min 10 chars for branch)
     meta = base_meta
     if item.get("branch"):
-        meta_with_branch = f"{base_meta} · {item['branch']}"
-        max_meta_width = width - BADGE_WIDTH - 4
-        if visible_len(meta_with_branch) <= max_meta_width:
-            meta = meta_with_branch
+        branch_sep = " · "
+        available = width - BADGE_WIDTH - 2  # space after badge area
+        base_len = visible_len(base_meta)
+        branch = item["branch"]
+        branch_len = len(branch)
+        total_len = base_len + len(branch_sep) + branch_len
+
+        if total_len <= available:
+            meta = f"{base_meta}{branch_sep}{branch}"
+        elif available > base_len + len(branch_sep) + 10:
+            # Truncate branch to fit, keeping at least 10 chars
+            max_branch = available - base_len - len(branch_sep)
+            if max_branch >= 10:
+                truncated = branch[:max_branch - 1] + "…" if branch_len > max_branch else branch
+                meta = f"{base_meta}{branch_sep}{truncated}"
 
     pad = " " * (BADGE_WIDTH - visible_len(badge))
 
@@ -436,17 +448,18 @@ def _render_pr(item: dict, width: int) -> list[str]:
         title = title[: max(max_title - 1, 11)] + "…"
     title_with_num = f"{title} {pr_suffix}"
 
-    indent = " " * (BADGE_WIDTH + 2)
+    # Meta/failure lines align with title text (after badge area)
+    meta_indent = " " * BADGE_WIDTH
     lines = [
         f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title_with_num}{RESET}')}",
-        f"  {indent}{DIM}{meta}{RESET}",
+        f"  {meta_indent}{DIM}{meta}{RESET}",
     ]
 
     is_failure = (is_deploy and item["deploy"] == "failure") or (not is_deploy and item.get("ci") == "FAILURE")
     if is_failure:
         failure_line = _render_failure_line(item.get("failures", []), width - BADGE_WIDTH - 4)
         if failure_line:
-            lines.append(f"  {indent}{DIM}{failure_line}{RESET}")
+            lines.append(f"  {meta_indent}{DIM}{failure_line}{RESET}")
 
     return lines
 
