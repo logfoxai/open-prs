@@ -699,7 +699,7 @@ def main() -> None:
 
     if not args or "--help" in flags or "-h" in flags:
         print("Usage: open-prs <org> [--once [--plain]]", file=sys.stderr)
-        sys.exit(1 if not args else 0)
+        sys.exit(0 if ("--help" in flags or "-h" in flags) else 1)
 
     org = args[0]
 
