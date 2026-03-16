@@ -179,11 +179,22 @@ def fetch_prs(org: str) -> tuple[list[dict], list[dict]]:
         datetime.now(timezone.utc) - timedelta(hours=MERGED_LOOKBACK_HOURS)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    result = subprocess.run(
-        ["gh", "api", "graphql", "-f",
-         f"query={GRAPHQL_QUERY.format(org=org, cutoff=cutoff)}"],
-        capture_output=True, text=True, check=True,
-    )
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f",
+             f"query={GRAPHQL_QUERY.format(org=org, cutoff=cutoff)}"],
+            capture_output=True, text=True, check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        err = (e.stderr or e.stdout or str(e)).strip()
+        if "auth" in err.lower() or "401" in err or "credentials" in err.lower():
+            print("open-prs: GitHub authentication required. Run: gh auth login", file=sys.stderr)
+        elif err:
+            print(f"open-prs: {err}", file=sys.stderr)
+        else:
+            print(f"open-prs: gh command failed (exit {e.returncode})", file=sys.stderr)
+        sys.exit(1)
+
     data = json.loads(result.stdout)["data"]
 
     open_prs = _parse_open_nodes(data["open"]["nodes"])

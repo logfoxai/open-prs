@@ -9,7 +9,7 @@
 
 `open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
-No config files. No Docker. No Node modules. Just one Python script and `gh`. Works great with [AI coding agents](#ai-agent-integration) too — one command gives your agent full cross-repo PR context.
+No config files. No Docker. No Node modules. Just one Python script and `gh`. Requires `gh auth login` first. Works great with [AI coding agents](#ai-agent-integration) too — one command gives your agent full cross-repo PR context.
 
 <p align="center">
   <img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
@@ -32,7 +32,7 @@ No config files. No Docker. No Node modules. Just one Python script and `gh`. Wo
 
 ## Install
 
-macOS or Linux. Homebrew installs Python and `gh` for you; manual install requires them already on your system.
+macOS or Linux. Requires `gh` authenticated — run `gh auth login` first. Homebrew installs Python and `gh` for you; manual install requires them already on your system.
 
 ### Homebrew
 
@@ -42,7 +42,7 @@ brew install logfoxai/tap/open-prs
 
 ### Manual (curl)
 
-Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`) authenticated.
+Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`) — run `gh auth login` first.
 
 ```bash
 mkdir -p ~/.local/bin
@@ -100,7 +100,7 @@ Add this to your AI assistant's rules (Cursor rules, Claude system prompt, etc.)
 
 > Before starting work, run `open-prs <org> --once --plain` to see what's in flight.
 
-Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
+Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent runs. Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
 
 ## Status Badges
 
