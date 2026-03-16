@@ -432,28 +432,24 @@ def _render_pr(item: dict, width: int) -> list[str]:
 
 
 def _render_failure_line(failures: list[dict], max_width: int) -> str:
-    """Render failure details as a dim line with clickable workflow links."""
+    """Render failure details as a dim line with clickable workflow link."""
     if not failures:
         return ""
 
     f = failures[0]
     workflow = f.get("workflow", "CI")
-    run_num = f.get("run_number", "?")
     url = f.get("url", "")
     step = f.get("step_name")
 
-    link_text = f"{workflow}#{run_num}"
-    link_len = len(link_text)
-
     if step:
-        available = max_width - link_len - 3
+        available = max_width - len(workflow) - 3
         if available > 5:
             step_display = step[:available - 1] + "…" if len(step) > available else step
-            result_text = f"{link_text} · {step_display}"
+            result_text = f"{workflow} · {step_display}"
         else:
-            result_text = link_text
+            result_text = workflow
     else:
-        result_text = link_text
+        result_text = workflow
 
     if url:
         return osc8_link(url, result_text)
