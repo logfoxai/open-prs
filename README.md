@@ -9,30 +9,26 @@
 
 `open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, clickable links, and a responsive layout that just works. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
-No config files. No Docker. No Node modules. Just one Python script and `gh`. Works great with [AI coding agents](#ai-agent-integration) too — one command gives your agent full cross-repo PR context.
+Works great with [AI coding agents](#ai-agent-integration) too — one command gives your agent full cross-repo PR context.
 
-<p align="center">
-  <img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
-</p>
+> **Note: Requires `gh auth login` first.**
+
+<img src="assets/screenshot.png" alt="open-prs watch mode" width="800" />
 
 ## Features
 
-- **Live CI badges** — instantly see pass, fail, running, or no CI for every PR
-- **Merge conflict detection** — PRs with conflicts show a red `⚠ conflict` badge
-- **Inline failure details** — failed PRs show the workflow and step name (e.g., `CI#21 · Install deps`) so you can tell at a glance what broke — no clicking through GitHub's slow UI to find the issue
-- **PR numbers** — each title shows its PR number for quick reference: `feat: something…(#43)`
-- **Post-merge deploy tracking** — merged PRs stay visible while deploy workflows run; failures stick around, successes fade after 15 min
-- **Clickable PR titles** — real hyperlinks (OSC 8) in iTerm2, VS Code terminal, Ghostty, Kitty, and more
-- **Responsive 2-column layout** — auto-switches when your PRs overflow the terminal height
-- **Full-screen TUI** — alternate buffer, auto-refreshes every 60s, keyboard shortcuts for refresh (`r`) and quit (`q`)
-- **Grouped by repo** — clean visual hierarchy, sorted alphabetically
-- **Plain text mode** — `--once --plain` strips all ANSI codes for piping to AI agents, scripts, or pipelines
-- **AI-agent friendly** — one command replaces 6-8 `gh` calls; compact output saves tokens
-- **Single file** — runs on any machine with Python 3.9+ and `gh`
+- **Live CI badges** — pass, fail, running, or no CI for every PR
+- **Merge conflict detection** — red `⚠ conflict` badge when a PR has conflicts
+- **Inline failure details** — failed PRs show workflow and step name so you see what broke without opening GitHub's slow UI
+- **PR numbers** — each title shows its number: `feat: something…(#43)`
+- **Post-merge deploy tracking** — merged PRs stay visible while deploys run; failures persist, successes fade after 15 min
+- **Clickable PR titles** — real hyperlinks in iTerm2, VS Code, Ghostty, Kitty, and more
+- **Plain text mode** — `--once --plain` for piping to AI agents or scripts
+- **AI-agent friendly** — one command replaces many `gh` calls; saves time and tokens
 
 ## Install
 
-macOS or Linux. Homebrew installs Python and `gh` for you; manual install requires them already on your system.
+macOS or Linux. Requires `gh` authenticated — run `gh auth login` first.
 
 ### Homebrew
 
@@ -42,7 +38,7 @@ brew install logfoxai/tap/open-prs
 
 ### Manual (curl)
 
-Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`) authenticated.
+Requires Python 3.9+ and [GitHub CLI](https://cli.github.com/) (`gh`).
 
 ```bash
 mkdir -p ~/.local/bin
@@ -100,7 +96,7 @@ Add this to your AI assistant's rules (Cursor rules, Claude system prompt, etc.)
 
 > Before starting work, run `open-prs <org> --once --plain` to see what's in flight.
 
-Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
+Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent runs. Adding `--plain` strips ANSI codes so the output is clean text your agent can parse directly — no escape sequences to wade through. Your agent stays aware of active PRs, CI status, and in-progress deploys across the org, so it doesn't duplicate work or miss context.
 
 ## Status Badges
 
