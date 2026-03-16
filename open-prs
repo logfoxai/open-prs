@@ -145,6 +145,12 @@ def visible_len(s: str) -> int:
     return len(strip_ansi(s))
 
 
+BADGE_WIDTH = max(
+    visible_len(b)
+    for b in [*CI_BADGES.values(), *DEPLOY_BADGES.values()]
+)
+
+
 def osc8_link(url: str, text: str) -> str:
     """Wrap text in an OSC 8 hyperlink (clickable in modern terminals)."""
     return f"\033]8;;{url}\a{text}\033]8;;\a"
@@ -410,26 +416,26 @@ def _render_pr(item: dict, width: int) -> list[str]:
         badge = CI_BADGES.get(item.get("ci"), CI_BADGES[None])
         meta = f"{item['author']} · {item['age']} ago"
 
-    badge_w = visible_len(badge)
+    pad = " " * (BADGE_WIDTH - visible_len(badge))
 
     title = item["title"]
     pr_num = item["url"].rstrip("/").split("/")[-1]
     pr_suffix = f"(#{pr_num})"
-    max_title = width - badge_w - 4 - len(pr_suffix) - 1
+    max_title = width - BADGE_WIDTH - 4 - len(pr_suffix) - 1
 
     if len(title) > max(max_title, 12):
         title = title[: max(max_title - 1, 11)] + "…"
     title_with_num = f"{title} {pr_suffix}"
 
-    indent = " " * (badge_w + 2)
+    indent = " " * (BADGE_WIDTH + 2)
     lines = [
-        f"  {badge}{osc8_link(item['url'], f'{GREEN}{title_with_num}{RESET}')}",
+        f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title_with_num}{RESET}')}",
         f"  {indent}{DIM}{meta}{RESET}",
     ]
 
     is_failure = (is_deploy and item["deploy"] == "failure") or (not is_deploy and item.get("ci") == "FAILURE")
     if is_failure:
-        failure_line = _render_failure_line(item.get("failures", []), width - badge_w - 4)
+        failure_line = _render_failure_line(item.get("failures", []), width - BADGE_WIDTH - 4)
         if failure_line:
             lines.append(f"  {indent}{DIM}{failure_line}{RESET}")
 
