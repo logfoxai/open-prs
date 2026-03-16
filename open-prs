@@ -72,7 +72,7 @@ GRAPHQL_QUERY = """\
   open: search(query: "org:{org} is:pr is:open", type: ISSUE, first: 100) {{
     nodes {{
       ... on PullRequest {{
-        title url number
+        title url number mergeable
         author {{ login }}
         createdAt
         repository {{ name owner {{ login }} }}
@@ -108,12 +108,13 @@ GRAPHQL_QUERY = """\
 # ── badges ───────────────────────────────────────────────────────────────────
 
 CI_BADGES = {
-    "SUCCESS":  f"{BG_GREEN}{BOLD}{WHITE} ✓ pass {RESET} ",
-    "FAILURE":  f"{BG_RED}{BOLD}{WHITE} ✗ fail {RESET} ",
-    "ERROR":    f"{BG_RED}{BOLD}{WHITE} ✗ err  {RESET} ",
-    "PENDING":  f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
-    "EXPECTED": f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
-    None:       f"{DIM}no ci{RESET}  ",
+    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ pass {RESET} ",
+    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ fail {RESET} ",
+    "ERROR":      f"{BG_RED}{BOLD}{WHITE} ✗ err  {RESET} ",
+    "PENDING":    f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
+    "EXPECTED":   f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
+    "CONFLICT":   f"{BG_RED}{BOLD}{WHITE} ⚠ conflict {RESET} ",
+    None:         f"{DIM}no ci{RESET}  ",
 }
 
 DEPLOY_BADGES = {
@@ -199,6 +200,9 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
         rollup = commit["statusCheckRollup"]
         suites = commit.get("checkSuites", {}).get("nodes", [])
         failures = _extract_failures(suites, node["repository"])
+        ci = rollup["state"] if rollup else None
+        if node.get("mergeable") == "CONFLICTING":
+            ci = "CONFLICT"
         prs.append({
             "repo": node["repository"]["name"],
             "org": node["repository"]["owner"]["login"],
@@ -206,7 +210,7 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
             "url": node["url"],
             "author": node["author"]["login"],
             "age": time_ago(node["createdAt"]),
-            "ci": rollup["state"] if rollup else None,
+            "ci": ci,
             "failures": failures,
         })
     prs.sort(key=lambda p: (p["repo"], p["title"]))
@@ -404,13 +408,17 @@ def _render_pr(item: dict, width: int) -> list[str]:
     pad = " " * (BADGE_WIDTH - visible_len(badge))
 
     title = item["title"]
-    max_title = width - BADGE_WIDTH - 4
+    pr_num = item["url"].rstrip("/").split("/")[-1]
+    pr_suffix = f"(#{pr_num})"
+    max_title = width - BADGE_WIDTH - 4 - len(pr_suffix) - 1
+
     if len(title) > max(max_title, 12):
         title = title[: max(max_title - 1, 11)] + "…"
+    title_with_num = f"{title} {pr_suffix}"
 
     indent = " " * (BADGE_WIDTH + 2)
     lines = [
-        f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title}{RESET}')}",
+        f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title_with_num}{RESET}')}",
         f"  {indent}{DIM}{meta}{RESET}",
     ]
 
@@ -459,11 +467,7 @@ def _build_header(org: str, n_open: int, n_merged: int, watch: bool) -> str:
 
     header = f"{BOLD}{CYAN}PRs{RESET} {DIM}({org}, {counts})"
     if watch:
-        header += (
-            f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh"
-            f"  {RESET}{BOLD}c{RESET}{DIM} clear merged"
-            f"  {RESET}{BOLD}q{RESET}{DIM} quit"
-        )
+        header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh  {RESET}{BOLD}q{RESET}{DIM} quit"
     return header + RESET
 
 
@@ -630,41 +634,36 @@ def _apply_step_names(items: list[dict], step_names: dict[int, str]) -> None:
 def run_watch(org: str) -> None:
     old_settings = termios.tcgetattr(sys.stdin)
     failed_cache: dict[str, dict] = {}
-    dismissed: set[str] = set()
     step_names_cache: dict[int, str] = {}
-    current_state: dict = {"open_prs": [], "visible": []}
+    current_state: dict = {"open_prs": [], "deployments": []}
 
     write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
     try:
         tty.setcbreak(sys.stdin.fileno())
 
-        def _draw(open_prs, visible):
+        def _draw(open_prs, deployments):
             current_state["open_prs"] = open_prs
-            current_state["visible"] = visible
+            current_state["deployments"] = deployments
             cols, rows = shutil.get_terminal_size((80, 24))
-            output = render(open_prs, visible, org, watch=True, max_rows=rows - 2)
+            output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2)
             ad = _render_ad_bar(cols)
-            bottom = MOVE_TO_ROW.format(row=rows - 1)
-            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{bottom}{ad}")
+            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{MOVE_TO_ROW.format(row=rows - 1)}{ad}")
 
         def _on_resize(signum, frame):
-            _draw(current_state["open_prs"], current_state["visible"])
+            _draw(current_state["open_prs"], current_state["deployments"])
 
         signal.signal(signal.SIGWINCH, _on_resize)
 
         while True:
-            open_prs, deployments = _fetch_all(
-                org, failed_cache, _show_loading_alt,
-            )
-            visible = [d for d in deployments if d["url"] not in dismissed]
+            open_prs, deployments = _fetch_all(org, failed_cache, _show_loading_alt)
 
             _apply_step_names(open_prs, step_names_cache)
-            _apply_step_names(visible, step_names_cache)
-            _draw(open_prs, visible)
+            _apply_step_names(deployments, step_names_cache)
+            _draw(open_prs, deployments)
 
-            all_failures = _collect_all_failures(open_prs, visible)
-            new_failures = [f for f in all_failures if f.get("run_id") and f.get("run_id") not in step_names_cache]
+            all_failures = _collect_all_failures(open_prs, deployments)
+            new_failures = [f for f in all_failures if f.get("run_id") and f["run_id"] not in step_names_cache]
 
             if new_failures:
                 def fetch_and_redraw():
@@ -672,19 +671,14 @@ def run_watch(org: str) -> None:
                     if new_steps:
                         step_names_cache.update(new_steps)
                         _apply_step_names(open_prs, step_names_cache)
-                        _apply_step_names(visible, step_names_cache)
-                        _draw(open_prs, visible)
+                        _apply_step_names(deployments, step_names_cache)
+                        _draw(open_prs, deployments)
 
-                thread = threading.Thread(target=fetch_and_redraw, daemon=True)
-                thread.start()
+                threading.Thread(target=fetch_and_redraw, daemon=True).start()
 
             key = _wait_for_key(POLL_SECONDS)
             if key in ("q", "\x03"):
                 break
-            if key == "c":
-                dismissed.update(d["url"] for d in deployments)
-                visible = [d for d in deployments if d["url"] not in dismissed]
-                _draw(open_prs, visible)
     except KeyboardInterrupt:
         pass
     finally:
