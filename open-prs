@@ -489,14 +489,14 @@ def _render_failure_line(failures: list[dict], max_width: int) -> str:
     return result_text
 
 
-def _build_header(org: str, n_open: int, n_merged: int, watch: bool) -> str:
+def _build_header(org: str, n_open: int, n_merged: int, watch: bool, show_merged: bool = True) -> str:
     counts = f"{n_open} open"
-    if n_merged:
+    if n_merged and show_merged:
         counts += f", {n_merged} merged"
 
     header = f"{BOLD}{CYAN}PRs{RESET} {DIM}({org}, {counts})"
     if watch:
-        header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh  {RESET}{BOLD}q{RESET}{DIM} quit"
+        header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh  {RESET}{BOLD}m{RESET}{DIM} {'hide' if show_merged else 'show'} merged  {RESET}{BOLD}q{RESET}{DIM} quit"
     return header + RESET
 
 
@@ -551,11 +551,13 @@ def render(
     watch: bool,
     plain: bool = False,
     max_rows: int | None = None,
+    show_merged: bool = True,
 ) -> str:
     cols, rows = shutil.get_terminal_size((80, 24))
-    header = _build_header(org, len(open_prs), len(deployments), watch)
+    visible_deployments = deployments if show_merged else []
+    header = _build_header(org, len(open_prs), len(deployments), watch, show_merged)
 
-    groups = _group_items(open_prs, deployments)
+    groups = _group_items(open_prs, visible_deployments)
     if not groups:
         return f"{header}\n\n  {DIM}No PRs.{RESET}\n"
 
@@ -666,17 +668,21 @@ def run_watch(org: str) -> None:
     failed_cache: dict[str, dict] = {}
     step_names_cache: dict[int, str] = {}
     current_state: dict = {"open_prs": [], "deployments": []}
+    show_merged = True
 
     write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
     try:
         tty.setcbreak(sys.stdin.fileno())
 
-        def _draw(open_prs, deployments):
+        def _draw(open_prs, deployments, merged_visible=None):
             current_state["open_prs"] = open_prs
             current_state["deployments"] = deployments
+            if merged_visible is not None:
+                nonlocal show_merged
+                show_merged = merged_visible
             cols, rows = shutil.get_terminal_size((80, 24))
-            output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2)
+            output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2, show_merged=show_merged)
             ad = _render_ad_bar(cols)
             write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{MOVE_TO_ROW.format(row=rows - 1)}{ad}")
 
@@ -709,6 +715,8 @@ def run_watch(org: str) -> None:
             key = _wait_for_key(POLL_SECONDS)
             if key in ("q", "\x03"):
                 break
+            elif key == "m":
+                _draw(current_state["open_prs"], current_state["deployments"], merged_visible=not show_merged)
     except KeyboardInterrupt:
         pass
     finally:
