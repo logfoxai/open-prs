@@ -566,7 +566,8 @@ def render(
         if (item.get("deploy") == "failure") or (item.get("ci") == "FAILURE")
     )
     single_col_lines = 2 + num_groups * 2 + len(all_items) * 2 + failure_count
-    use_two_cols = not plain and cols >= TWO_COL_MIN_WIDTH and single_col_lines > rows
+    effective_rows = max_rows if max_rows else rows
+    use_two_cols = not plain and cols >= TWO_COL_MIN_WIDTH and single_col_lines > effective_rows
     col_width = (cols - 3) // 2 if use_two_cols else cols
 
     blocks: list[list[str]] = []
