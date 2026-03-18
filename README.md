@@ -1,4 +1,4 @@
-# 🦊 open-prs
+# open-prs
 
 [![CI](https://github.com/logfoxai/open-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/logfoxai/open-prs/actions)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -17,10 +17,10 @@ Works great with [AI coding agents](#ai-agent-integration) too — one command g
 
 ## Features
 
+- **Instant failure diagnostics** — see exactly which workflow and step failed, right in your terminal, without opening GitHub's slow UI
 - **Live CI badges** — passed, failed, running, or no CI for every PR
-- **Merge conflict detection** — red `⚠ conflict` badge when a PR has conflicts
-- **Inline failure details** — failed PRs show workflow and step name so you see what broke without opening GitHub's slow UI
-- **PR numbers** — each title shows its number: `feat: something…(#43)`
+- **Repo main branch status** — small `✗` or `●` indicator when a repo's default branch is failing or running checks
+- **Merge conflict detection** — `⚠ conflict` badge when a PR has conflicts
 - **Post-merge deploy tracking** — merged PRs stay visible while deploys run; failures persist, successes fade after 15 min
 - **Clickable PR titles** — real hyperlinks in iTerm2, VS Code, Ghostty, Kitty, and more
 - **Plain text mode** — `--once --plain` for piping to AI agents or scripts
@@ -83,6 +83,8 @@ open-prs <org> [--once [--plain]]
 ### Keyboard shortcuts
 
 - `r` — Refresh immediately
+- `m` — Toggle showing/hiding merged PRs
+- `c` — Clear failed deployment cache
 - `q` — Quit (also `Ctrl+C`)
 
 ## AI Agent Integration
@@ -113,6 +115,14 @@ Ensure `gh` is authenticated (`gh auth login`) on the machine where the agent ru
 
 ## Status Badges
 
+### Repo Main Branch (next to repo name)
+
+When a repository's default branch has workflow activity:
+
+- `✗` (pink) — Main branch workflow is failing
+- `●` (amber) — Main branch workflow is running
+- (no icon) — Main branch is healthy (clean by design)
+
 ### CI (on open PRs)
 
 - `✓ passed` — All checks passed
@@ -137,8 +147,9 @@ Merged and successful deploys fade after 15 minutes. Failed deploys persist unti
 
 1. A single GitHub GraphQL call fetches all open + recently merged PRs across the org
 2. For each merged PR, a REST call checks workflow run status
-3. Everything renders with ANSI colors, OSC 8 hyperlinks, and responsive column layout
-4. The TUI uses the terminal's alternate screen buffer for a clean full-screen experience
+3. **Repo main branch status** is fetched asynchronously in parallel (cached for 5 minutes) and displayed as subtle indicators next to repo names
+4. Everything renders with 24-bit true color (ANSI), OSC 8 hyperlinks, and responsive column layout
+5. The TUI uses the terminal's alternate screen buffer for a clean full-screen experience
 
 ## Configuration
 
@@ -146,8 +157,8 @@ All tunables are constants at the top of the script — no config files needed:
 
 - `POLL_SECONDS` — Polling interval in TUI mode (default: `60`)
 - `DEPLOY_FADE_SECONDS` — How long successful deploys stay visible (default: `900`)
-- `MERGED_LOOKBACK_HOURS` — How far back to search for merged PRs (default: `4`)
-- `TWO_COL_MIN_WIDTH` — Minimum terminal width for 2-column layout (default: `100`)
+- `MERGED_LOOKBACK_HOURS` — How far back to search for merged PRs (default: `24`)
+- `REPO_STATUS_CACHE_SECONDS` — Cache time for repo main branch status (default: `300`)
 
 ## Contributing
 
