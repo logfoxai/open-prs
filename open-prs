@@ -149,7 +149,7 @@ DEPLOY_BADGES = {
     "failure":  f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ✗ failed {RESET} ",
     "running":  f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● deploying {RESET} ",
     "queued":   f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ◦ queued {RESET} ",
-    "merged":   f"{BG_MERGED}{BOLD}{WHITE} ✓ merged {RESET} ",
+    "merged":   f"{BG_MERGED}{BOLD}\033[38;2;60;40;80m ✓ merged {RESET} ",
 }
 
 # Small repo status indicators (subtle, inline with repo name)
