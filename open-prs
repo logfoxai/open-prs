@@ -33,18 +33,40 @@ from datetime import datetime, timedelta, timezone
 
 # ── ANSI & terminal control ─────────────────────────────────────────────────
 
+# Logfox theme colors (matching foo-frontend CSS)
 BOLD = "\033[1m"
 DIM = "\033[2m"
 RESET = "\033[0m"
+
+# Primary: less saturated, brighter magenta for headers and merged tags
+MAGENTA = "\033[38;2;200;180;220m"  # desaturated purple
+# Soft blue-grey for repo titles (distinct from magenta)
+REPO_COLOR = "\033[38;2;150;170;200m"  # soft blue-grey
+BRIGHT_MAGENTA = "\033[95m"
+
+# Secondary: #a0eaff (cyan) - links, highlights
 CYAN = "\033[36m"
-GREEN = "\033[32m"
+BRIGHT_CYAN = "\033[96m"
+
+# Success: #7bee7b (green)
+GREEN = "\033[92m"  # bright green
+
+# Error: #e91e63 (pink/red)
+RED = "\033[91m"  # bright red
+
+# Warning: yellow (no Logfox equivalent, keeping standard)
 YELLOW = "\033[33m"
-RED = "\033[31m"
-WHITE = "\033[37m"
-BG_RED = "\033[41m"
-BG_GREEN = "\033[42m"
-BG_YELLOW = "\033[43m"
-BG_MAGENTA = "\033[45m"
+
+# Text: #c4c6d0 (light gray/white) - Logfox text color
+WHITE = "\033[38;2;196;198;208m"  # true color #c4c6d0
+# Light tinted white for failure badges (white with hint of pink)
+LIGHT_PINK = "\033[38;2;255;235;240m"  # bright white with pink tint
+
+# True color (24-bit) backgrounds - Logfox palette (slightly desaturated)
+BG_SUCCESS = "\033[48;2;140;220;140m"   # desaturated green
+BG_FAILURE = "\033[48;2;220;80;120m"    # desaturated pink/red
+BG_PENDING = "\033[48;2;240;180;60m"   # desaturated amber
+BG_MERGED = "\033[48;2;200;180;220m"    # desaturated purple
 
 HIDE_CURSOR = "\033[?25l"
 SHOW_CURSOR = "\033[?25h"
@@ -63,7 +85,7 @@ DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 24
 TWO_COL_MIN_WIDTH = 100
 AD_URL = "https://app.logfox.ai"
-AD_TEXT = "🦊 Logfox — Sniff out issues. AI-powered log observability →"
+AD_TEXT = "Logfox — Sniff out issues. AI-powered log observability →"
 
 # ── GraphQL ──────────────────────────────────────────────────────────────────
 
@@ -107,22 +129,26 @@ GRAPHQL_QUERY = """\
 
 # ── badges ───────────────────────────────────────────────────────────────────
 
+# Dark tinted text colors for badges (better than pure black)
+DARK_GREEN = "\033[38;2;15;50;25m"    # dark forest green for desaturated green bg
+DARK_MUSTARD = "\033[38;2;70;50;10m"   # dark mustard/brown for desaturated amber bg
+
 CI_BADGES = {
-    "SUCCESS":    f"{BG_GREEN}{BOLD}{WHITE} ✓ passed {RESET} ",
-    "FAILURE":    f"{BG_RED}{BOLD}{WHITE} ✗ failed {RESET} ",
-    "ERROR":      f"{BG_RED}{BOLD}{WHITE} ✗ err {RESET} ",
-    "PENDING":    f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
-    "EXPECTED":   f"{BG_YELLOW}{BOLD}{WHITE} ● running {RESET} ",
-    "CONFLICT":   f"{BG_RED}{BOLD}{WHITE} ⚠ conflict {RESET} ",
+    "SUCCESS":    f"{BG_SUCCESS}{BOLD}{DARK_GREEN} ✓ passed {RESET} ",
+    "FAILURE":    f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ✗ failed {RESET} ",
+    "ERROR":      f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ✗ err {RESET} ",
+    "PENDING":    f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● running {RESET} ",
+    "EXPECTED":   f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● running {RESET} ",
+    "CONFLICT":   f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ⚠ conflict {RESET} ",
     None:         f"{DIM}no ci {RESET} ",
 }
 
 DEPLOY_BADGES = {
-    "success":  f"{BG_GREEN}{BOLD}{WHITE} ✓ deployed {RESET} ",
-    "failure":  f"{BG_RED}{BOLD}{WHITE} ✗ failed {RESET} ",
-    "running":  f"{BG_YELLOW}{BOLD}{WHITE} ● deploying {RESET} ",
-    "queued":   f"{BG_YELLOW}{BOLD}{WHITE} ◦ queued {RESET} ",
-    "merged":   f"{BG_MAGENTA}{BOLD}{WHITE} ✓ merged {RESET} ",
+    "success":  f"{BG_SUCCESS}{BOLD}{DARK_GREEN} ✓ deployed {RESET} ",
+    "failure":  f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ✗ failed {RESET} ",
+    "running":  f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● deploying {RESET} ",
+    "queued":   f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ◦ queued {RESET} ",
+    "merged":   f"{BG_MERGED}{BOLD}{WHITE} ✓ merged {RESET} ",
 }
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -409,14 +435,11 @@ def _render_pr(item: dict, width: int) -> list[str]:
 
     if is_deploy:
         badge = DEPLOY_BADGES.get(item["deploy"], DEPLOY_BADGES["running"])
-        merged_label = (
-            f"{RED}merged{RESET}{DIM}" if item["deploy"] == "failure"
-            else "merged"
-        )
-        base_meta = f"{item['author']} · {merged_label} {item['merged_age']} ago"
+        # Author dim, merged bold magenta, age dim
+        base_meta = f"{DIM}{item['author']} · {RESET}{BOLD}{MAGENTA}merged{RESET}{DIM} {item['merged_age']} ago{RESET}"
     else:
         badge = CI_BADGES.get(item.get("ci"), CI_BADGES[None])
-        base_meta = f"{item['author']} · {item['age']} ago"
+        base_meta = f"{DIM}{item['author']} · {item['age']} ago{RESET}"
 
     # Build meta line with branch (truncated if needed, min 10 chars for branch)
     meta = base_meta
@@ -427,15 +450,18 @@ def _render_pr(item: dict, width: int) -> list[str]:
         branch = item["branch"]
         branch_len = len(branch)
         total_len = base_len + len(branch_sep) + branch_len
+        # Branch in dim color to match author/age
+        branch_color = f"{DIM}{branch}{RESET}"
 
         if total_len <= available:
-            meta = f"{base_meta}{branch_sep}{branch}"
+            meta = f"{base_meta}{branch_sep}{branch_color}"
         elif available > base_len + len(branch_sep) + 10:
             # Truncate branch to fit, keeping at least 10 chars
             max_branch = available - base_len - len(branch_sep)
             if max_branch >= 10:
                 truncated = branch[:max_branch - 1] + "…" if branch_len > max_branch else branch
-                meta = f"{base_meta}{branch_sep}{truncated}"
+                branch_color = f"{DIM}{truncated}{RESET}"
+                meta = f"{base_meta}{branch_sep}{branch_color}"
 
     pad = " " * (BADGE_WIDTH - visible_len(badge))
 
@@ -451,8 +477,8 @@ def _render_pr(item: dict, width: int) -> list[str]:
     # Meta/failure lines align with title text (after badge area)
     meta_indent = " " * BADGE_WIDTH
     lines = [
-        f"  {badge}{pad}{osc8_link(item['url'], f'{GREEN}{title_with_num}{RESET}')}",
-        f"  {meta_indent}{DIM}{meta}{RESET}",
+        f"  {badge}{pad}{osc8_link(item['url'], f'{WHITE}{title_with_num}{RESET}')}",
+        f"  {meta_indent}{meta}{RESET}",
     ]
 
     is_failure = (is_deploy and item["deploy"] == "failure") or (not is_deploy and item.get("ci") == "FAILURE")
@@ -494,7 +520,7 @@ def _build_header(org: str, n_open: int, n_merged: int, watch: bool, show_merged
     if n_merged and show_merged:
         counts += f", {n_merged} merged"
 
-    header = f"{BOLD}{CYAN}PRs{RESET} {DIM}({org}, {counts})"
+    header = f"{BOLD}{MAGENTA}{org}{RESET} {DIM}· {counts}"
     if watch:
         header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refr  {RESET}{BOLD}m{RESET}{DIM} {'hide' if show_merged else 'show'} mrgd  {RESET}{BOLD}c{RESET}{DIM} clr  {RESET}{BOLD}q{RESET}{DIM} quit"
     return header + RESET
@@ -574,7 +600,7 @@ def render(
 
     blocks: list[list[str]] = []
     for repo in sorted(groups):
-        lines = [f"  {BOLD}{YELLOW}{repo}{RESET}"]
+        lines = [f"  {BOLD}{REPO_COLOR}{repo}{RESET}"]
         for item in groups[repo]:
             lines.extend(_render_pr(item, col_width))
         blocks.append(lines)
