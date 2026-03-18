@@ -33,4 +33,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get update && sudo apt-get install -y gh
-          python open-prs logfoxai --once --plain | grep -q "PRs"
+          python open-prs logfoxai --once --plain | grep -q "open"
