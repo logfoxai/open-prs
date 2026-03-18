@@ -84,6 +84,7 @@ POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60
 MERGED_LOOKBACK_HOURS = 24
 TWO_COL_MIN_WIDTH = 100
+REPO_STATUS_CACHE_SECONDS = 300  # 5 min cache for repo main branch status
 AD_URL = "https://app.logfox.ai"
 AD_TEXT = "Logfox — Sniff out issues. AI-powered log observability →"
 
@@ -149,6 +150,14 @@ DEPLOY_BADGES = {
     "running":  f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● deploying {RESET} ",
     "queued":   f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ◦ queued {RESET} ",
     "merged":   f"{BG_MERGED}{BOLD}{WHITE} ✓ merged {RESET} ",
+}
+
+# Small repo status indicators (subtle, inline with repo name)
+REPO_STATUS_ICONS = {
+    "success":  "",  # No icon when healthy
+    "failure":  f" {LIGHT_PINK}✗{RESET}",
+    "running":  f" {DARK_MUSTARD}●{RESET}",
+    "unknown":  "",  # No status yet
 }
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -315,6 +324,64 @@ def _fetch_all_failed_steps(failures: list[dict]) -> dict[int, str]:
             step_name = future.result()
             if step_name:
                 results[run_id] = step_name
+    return results
+
+
+def _fetch_repo_status(org: str, repo: str) -> dict | None:
+    """Fetch main branch workflow status for a single repo via REST API."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{org}/{repo}/commits/HEAD/check-runs", "-f", "per_page=1"],
+            capture_output=True, text=True, check=True, timeout=10
+        )
+        data = json.loads(result.stdout)
+        runs = data.get("check_runs", [])
+        if not runs:
+            return {"status": "unknown", "updated_at": None}
+
+        run = runs[0]
+        status = run.get("status", "unknown")
+        conclusion = run.get("conclusion")
+
+        if status in ("in_progress", "queued", "pending"):
+            return {"status": "running", "updated_at": run.get("started_at")}
+        if conclusion == "success":
+            return {"status": "success", "updated_at": run.get("completed_at")}
+        if conclusion in ("failure", "timed_out", "action_required"):
+            return {"status": "failure", "updated_at": run.get("completed_at")}
+        return {"status": "unknown", "updated_at": None}
+    except (subprocess.CalledProcessError, json.JSONDecodeError, subprocess.TimeoutExpired):
+        return {"status": "unknown", "updated_at": None}
+
+
+def _fetch_all_repo_statuses(repos: list[tuple[str, str]], cache: dict, now: datetime) -> dict[str, dict]:
+    """Fetch repo statuses in parallel, respecting cache. Returns {repo_full_name: status}."""
+    results = {}
+    to_fetch = []
+
+    for org, repo in repos:
+        key = f"{org}/{repo}"
+        cached = cache.get(key)
+        if cached and (now - cached["fetched_at"]).total_seconds() < REPO_STATUS_CACHE_SECONDS:
+            results[key] = cached["status"]
+        else:
+            to_fetch.append((org, repo))
+
+    if not to_fetch:
+        return results
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        future_to_key = {
+            pool.submit(_fetch_repo_status, org, repo): f"{org}/{repo}"
+            for org, repo in to_fetch
+        }
+        for future in future_to_key:
+            key = future_to_key[future]
+            status = future.result()
+            if status:
+                cache[key] = {"status": status, "fetched_at": now}
+                results[key] = status
+
     return results
 
 
@@ -578,6 +645,7 @@ def render(
     plain: bool = False,
     max_rows: int | None = None,
     show_merged: bool = True,
+    repo_status: dict[str, dict] | None = None,
 ) -> str:
     cols, rows = shutil.get_terminal_size((80, 24))
     visible_deployments = deployments if show_merged else []
@@ -600,7 +668,14 @@ def render(
 
     blocks: list[list[str]] = []
     for repo in sorted(groups):
-        lines = [f"  {BOLD}{REPO_COLOR}{repo}{RESET}"]
+        # Get repo status badge (if any)
+        repo_key = f"{org}/{repo}"
+        status_badge = ""
+        if repo_status and repo_key in repo_status:
+            status = repo_status[repo_key].get("status", "unknown")
+            if status in ("failure", "running"):
+                status_badge = REPO_STATUS_ICONS.get(status, "")
+        lines = [f"  {BOLD}{REPO_COLOR}{repo}{RESET}{status_badge}"]
         for item in groups[repo]:
             lines.extend(_render_pr(item, col_width))
         blocks.append(lines)
@@ -693,6 +768,7 @@ def run_watch(org: str) -> None:
     old_settings = termios.tcgetattr(sys.stdin)
     failed_cache: dict[str, dict] = {}
     step_names_cache: dict[int, str] = {}
+    repo_status_cache: dict[str, dict] = {}
     current_state: dict = {"open_prs": [], "deployments": []}
     show_merged = True
     status_message: str | None = None
@@ -702,7 +778,7 @@ def run_watch(org: str) -> None:
     try:
         tty.setcbreak(sys.stdin.fileno())
 
-        def _draw(open_prs, deployments, merged_visible=None, status=None):
+        def _draw(open_prs, deployments, merged_visible=None, status=None, repo_status=None):
             nonlocal status_message
             current_state["open_prs"] = open_prs
             current_state["deployments"] = deployments
@@ -712,7 +788,7 @@ def run_watch(org: str) -> None:
             if status is not None:
                 status_message = status
             cols, rows = shutil.get_terminal_size((80, 24))
-            output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2, show_merged=show_merged)
+            output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2, show_merged=show_merged, repo_status=repo_status)
             ad = _render_ad_bar(cols)
             status_line = f"{MOVE_TO_ROW.format(row=rows - 2)}{DIM}{status_message}{RESET}{CLEAR_LINE}" if status_message else ""
             write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{status_line}{MOVE_TO_ROW.format(row=rows - 1)}{ad}")
@@ -720,7 +796,7 @@ def run_watch(org: str) -> None:
                 status_message = None
 
         def _on_resize(signum, frame):
-            _draw(current_state["open_prs"], current_state["deployments"])
+            _draw(current_state["open_prs"], current_state["deployments"], repo_status=repo_status_cache)
 
         signal.signal(signal.SIGWINCH, _on_resize)
 
@@ -729,7 +805,20 @@ def run_watch(org: str) -> None:
 
             _apply_step_names(open_prs, step_names_cache)
             _apply_step_names(deployments, step_names_cache)
-            _draw(open_prs, deployments)
+
+            # Identify unique repos that need status checks
+            all_items = open_prs + deployments
+            repos_to_check = list({(item["org"], item["repo"]) for item in all_items})
+            now = datetime.now(timezone.utc)
+
+            _draw(open_prs, deployments, repo_status=repo_status_cache)
+
+            # Async fetch repo statuses and redraw when done
+            def fetch_repo_statuses_and_redraw():
+                _fetch_all_repo_statuses(repos_to_check, repo_status_cache, now)
+                _draw(open_prs, deployments, repo_status=repo_status_cache)
+
+            threading.Thread(target=fetch_repo_statuses_and_redraw, daemon=True).start()
 
             all_failures = _collect_all_failures(open_prs, deployments)
             new_failures = [f for f in all_failures if f.get("run_id") and f["run_id"] not in step_names_cache]
@@ -741,7 +830,7 @@ def run_watch(org: str) -> None:
                         step_names_cache.update(new_steps)
                         _apply_step_names(open_prs, step_names_cache)
                         _apply_step_names(deployments, step_names_cache)
-                        _draw(open_prs, deployments)
+                        _draw(open_prs, deployments, repo_status=repo_status_cache)
 
                 threading.Thread(target=fetch_and_redraw, daemon=True).start()
 
