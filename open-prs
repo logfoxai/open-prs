@@ -60,7 +60,7 @@ SET_TITLE = "\033]0;{title}\007"
 
 POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60
-MERGED_LOOKBACK_HOURS = 4
+MERGED_LOOKBACK_HOURS = 24
 TWO_COL_MIN_WIDTH = 100
 AD_URL = "https://app.logfox.ai"
 AD_TEXT = "🦊 Logfox — Sniff out issues. AI-powered log observability →"
@@ -496,7 +496,7 @@ def _build_header(org: str, n_open: int, n_merged: int, watch: bool, show_merged
 
     header = f"{BOLD}{CYAN}PRs{RESET} {DIM}({org}, {counts})"
     if watch:
-        header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refresh  {RESET}{BOLD}m{RESET}{DIM} {'hide' if show_merged else 'show'} merged  {RESET}{BOLD}q{RESET}{DIM} quit"
+        header += f"  ·  {RESET}{BOLD}r{RESET}{DIM} refr  {RESET}{BOLD}m{RESET}{DIM} {'hide' if show_merged else 'show'} mrgd  {RESET}{BOLD}c{RESET}{DIM} clr  {RESET}{BOLD}q{RESET}{DIM} quit"
     return header + RESET
 
 
@@ -669,22 +669,29 @@ def run_watch(org: str) -> None:
     step_names_cache: dict[int, str] = {}
     current_state: dict = {"open_prs": [], "deployments": []}
     show_merged = True
+    status_message: str | None = None
 
     write(SET_TITLE.format(title=f"open-prs — {org}"))
     write(f"{ALT_SCREEN_ON}{HIDE_CURSOR}")
     try:
         tty.setcbreak(sys.stdin.fileno())
 
-        def _draw(open_prs, deployments, merged_visible=None):
+        def _draw(open_prs, deployments, merged_visible=None, status=None):
+            nonlocal status_message
             current_state["open_prs"] = open_prs
             current_state["deployments"] = deployments
             if merged_visible is not None:
                 nonlocal show_merged
                 show_merged = merged_visible
+            if status is not None:
+                status_message = status
             cols, rows = shutil.get_terminal_size((80, 24))
             output = render(open_prs, deployments, org, watch=True, max_rows=rows - 2, show_merged=show_merged)
             ad = _render_ad_bar(cols)
-            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{MOVE_TO_ROW.format(row=rows - 1)}{ad}")
+            status_line = f"{MOVE_TO_ROW.format(row=rows - 2)}{DIM}{status_message}{RESET}{CLEAR_LINE}" if status_message else ""
+            write(f"{CURSOR_HOME}{CLEAR_BELOW}{output}{status_line}{MOVE_TO_ROW.format(row=rows - 1)}{ad}")
+            if status is not None:
+                status_message = None
 
         def _on_resize(signum, frame):
             _draw(current_state["open_prs"], current_state["deployments"])
@@ -717,6 +724,10 @@ def run_watch(org: str) -> None:
                 break
             elif key == "m":
                 _draw(current_state["open_prs"], current_state["deployments"], merged_visible=not show_merged)
+            elif key == "c":
+                cleared = len(failed_cache)
+                failed_cache.clear()
+                _draw(current_state["open_prs"], current_state["deployments"], status=f"Cleared {cleared} cached failure(s)")
     except KeyboardInterrupt:
         pass
     finally:
