@@ -9,7 +9,7 @@
 
 `open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, and clickable links. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
-Works great with [AI coding agents](#ai-agent-integration) too — one command gives your agent full cross-repo PR context.
+Designed with [AI coding agents](#ai-agent-integration) in mind.
 
 > **Note: Requires `gh auth login` first.**
 
