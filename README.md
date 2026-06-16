@@ -146,7 +146,7 @@ Merged and successful deploys fade after 15 minutes. Failed deploys persist unti
 ## How It Works
 
 1. A single GitHub GraphQL call fetches all open + recently merged PRs across the org
-2. For each merged PR, a REST call checks workflow run status
+2. Open PR CI and merged PR deploy status both use each commit's `statusCheckRollup` (GitHub's aggregated check state)
 3. **Repo main branch status** is fetched asynchronously in parallel (cached for 5 minutes) and displayed as subtle indicators next to repo names
 4. Everything renders with 24-bit true color (ANSI), OSC 8 hyperlinks, and responsive column layout
 5. The TUI uses the terminal's alternate screen buffer for a clean full-screen experience
