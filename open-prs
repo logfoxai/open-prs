@@ -6,6 +6,7 @@ Usage:
     open-prs <org>                  Full-screen TUI dashboard (default)
     open-prs <org> --once           One-shot print and exit
     open-prs <org> --once --plain   One-shot, no colors/links (for piping or AI usage)
+    open-prs --version | -v         Print version and exit
 
 Shows open PRs with CI status and recently merged PRs with post-merge
 workflow status. Successful deploys fade after 15 min and failures stay
@@ -79,6 +80,8 @@ MOVE_TO_ROW = "\033[{row};1H"
 SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
+
+__version__ = "0.9.3"
 
 POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60
@@ -880,8 +883,13 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
     flags = {a for a in sys.argv[1:] if a.startswith("-")}
 
+    if "--version" in flags or "-v" in flags:
+        print(f"open-prs {__version__}")
+        sys.exit(0)
+
     if not args or "--help" in flags or "-h" in flags:
         print("Usage: open-prs <org> [--once [--plain]]", file=sys.stderr)
+        print("       open-prs (--version | -v)", file=sys.stderr)
         sys.exit(0 if ("--help" in flags or "-h" in flags) else 1)
 
     org = args[0]
