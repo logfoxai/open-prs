@@ -510,8 +510,9 @@ def _resolve_deployment(
     if ws["status"] in ("running", "queued"):
         return {**pr, "deploy": ws["status"]}
 
-    if ws["completed_at"]:
-        elapsed = (now - ws["completed_at"]).total_seconds()
+    if ws["status"] == "success":
+        finished_at = ws.get("completed_at") or parse_iso(pr["merged_at"])
+        elapsed = (now - finished_at).total_seconds()
         if elapsed < DEPLOY_FADE_SECONDS:
             return {**pr, "deploy": "success"}
 
