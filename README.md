@@ -74,11 +74,13 @@ open-prs myorg --once --plain  # plain text (for piping or AI agents)
 
 ```
 open-prs <org> [--once [--plain]]
+open-prs (--version | -v)
 ```
 
-- `<org>` — GitHub organization name (required)
+- `<org>` — GitHub organization name (required unless printing version)
 - `--once` — one-shot print and exit (default: full-screen TUI)
 - `--plain` — strip colors and links from `--once` output (for piping to scripts or AI agents)
+- `--version` / `-v` — print version and exit
 
 ### Keyboard shortcuts
 
