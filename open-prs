@@ -19,7 +19,6 @@ Requires: gh (GitHub CLI), authenticated.
 from __future__ import annotations
 
 import json
-import os
 import re
 import select
 import signal
@@ -83,7 +82,7 @@ SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-# Fallback when not in a git checkout and NEXT_VERSION is unset (e.g. curl copy to ~/.local/bin).
+# "dev" on main; release autorel run replaces this on the tagged commit only.
 __version__ = "dev"
 
 POLL_SECONDS = 60
@@ -220,9 +219,9 @@ def parse_iso(iso: str) -> datetime:
 
 
 def resolve_version() -> str:
-    """Version for --version: autorel NEXT_VERSION, else git describe, else dev."""
-    if v := os.environ.get("NEXT_VERSION", "").strip():
-        return v
+    """Version for --version: baked __version__ on releases, else git describe, else dev."""
+    if __version__ != "dev":
+        return __version__
 
     repo_root = Path(__file__).resolve().parent
     try:

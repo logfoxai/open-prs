@@ -12,3 +12,5 @@ commitTypes:
 branches:
   - {name: main}
 publish: false
+runBeforeRelease: true
+run: ./scripts/stamp-version.sh
