@@ -81,7 +81,7 @@ SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-__version__ = "0.9.3"
+__version__ = "0.0.0-dev"
 
 POLL_SECONDS = 60
 DEPLOY_FADE_SECONDS = 15 * 60

@@ -28,8 +28,8 @@ jobs:
         run: python open-prs --help 2>&1 | grep -q "Usage"
       - name: Version works
         run: |
-          python open-prs --version | grep -qE '^open-prs [0-9]+\.[0-9]+\.[0-9]+$'
-          python open-prs -v | grep -qE '^open-prs [0-9]+\.[0-9]+\.[0-9]+$'
+          python open-prs --version | grep -qE '^open-prs (0\.0\.0-dev|[0-9]+\.[0-9]+\.[0-9]+)$'
+          python open-prs -v | grep -qE '^open-prs (0\.0\.0-dev|[0-9]+\.[0-9]+\.[0-9]+)$'
           test "$(python open-prs --version)" = "$(python open-prs -v)"
       - name: No args exits 1
         run: '! python open-prs'
