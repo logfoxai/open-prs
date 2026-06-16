@@ -233,9 +233,12 @@ def resolve_version() -> str:
             check=True,
             timeout=2,
         )
-        return result.stdout.strip().removeprefix("v")
+        desc = result.stdout.strip().removeprefix("v")
+        if re.match(r"^[0-9]+\.[0-9]+\.[0-9]+", desc):
+            return desc
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
-        return __version__
+        pass
+    return __version__
 
 
 # ── data fetching ────────────────────────────────────────────────────────────
