@@ -118,8 +118,16 @@ GRAPHQL_QUERY = """\
         mergedAt
         mergeCommit {{
           oid
+          statusCheckRollup {{
+            state
+            contexts(first: 20) {{
+              nodes {{
+                ... on CheckRun {{ status conclusion completedAt }}
+              }}
+            }}
+          }}
           checkSuites(first: 20) {{
-            nodes {{ status conclusion updatedAt workflowRun {{ workflow {{ name }} databaseId runNumber url }} }}
+            nodes {{ conclusion updatedAt workflowRun {{ workflow {{ name }} databaseId runNumber url }} }}
           }}
         }}
         repository {{ name owner {{ login }} }}
@@ -390,8 +398,10 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
     for node in nodes:
         if not node or not node.get("mergeCommit"):
             continue
-        suites = node["mergeCommit"].get("checkSuites", {}).get("nodes", [])
-        status, failures = _aggregate_check_suites(suites, node["repository"])
+        commit = node["mergeCommit"]
+        rollup = commit.get("statusCheckRollup")
+        suites = commit.get("checkSuites", {}).get("nodes", [])
+        status, failures = _workflow_status_from_rollup(rollup, suites, node["repository"])
         prs.append({
             "repo": node["repository"]["name"],
             "org": node["repository"]["owner"]["login"],
@@ -408,27 +418,42 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
     return prs
 
 
-def _aggregate_check_suites(suites: list[dict], repo: dict) -> tuple[dict | None, list[dict]]:
-    """Aggregate GraphQL checkSuites into a single workflow status and failures list."""
-    if not suites:
-        return None, []
-
-    statuses = [s["status"] for s in suites]
+def _workflow_status_from_rollup(
+    rollup: dict | None,
+    suites: list[dict],
+    repo: dict,
+) -> tuple[dict | None, list[dict]]:
+    """Derive post-merge workflow status from GitHub's statusCheckRollup (same source as open PR CI)."""
     failures = _extract_failures(suites, repo)
 
-    if "IN_PROGRESS" in statuses:
-        return {"status": "running", "completed_at": None}, failures
-    if any(s in ("QUEUED", "WAITING", "REQUESTED", "PENDING") for s in statuses):
-        return {"status": "queued", "completed_at": None}, failures
-    if not all(s == "COMPLETED" for s in statuses):
+    if not rollup:
+        return None, failures
+
+    state = rollup.get("state")
+    if state == "SUCCESS":
+        return {
+            "status": "success",
+            "completed_at": _latest_check_completion(rollup, suites),
+        }, failures
+    if state in ("FAILURE", "ERROR"):
+        return {"status": "failure", "completed_at": None}, failures
+    if state in ("PENDING", "EXPECTED"):
         return {"status": "running", "completed_at": None}, failures
 
-    completed_at = max(parse_iso(s["updatedAt"]) for s in suites)
-    has_failure = any(s.get("conclusion") == "FAILURE" for s in suites)
-    return {
-        "status": "failure" if has_failure else "success",
-        "completed_at": completed_at,
-    }, failures
+    return None, failures
+
+
+def _latest_check_completion(rollup: dict, suites: list[dict]) -> datetime | None:
+    """Latest completion time from rollup check runs or successful workflow suites."""
+    times: list[datetime] = []
+    for node in rollup.get("contexts", {}).get("nodes", []):
+        completed = node.get("completedAt")
+        if completed:
+            times.append(parse_iso(completed))
+    for suite in suites:
+        if suite.get("conclusion") == "SUCCESS" and suite.get("updatedAt"):
+            times.append(parse_iso(suite["updatedAt"]))
+    return max(times) if times else None
 
 
 def build_deployments(
