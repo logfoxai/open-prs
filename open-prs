@@ -82,7 +82,7 @@ SET_TITLE = "\033]0;{title}\007"
 
 # ── configuration ────────────────────────────────────────────────────────────
 
-# "dev" on main; release autorel run replaces this on the tagged commit only.
+# "dev" in source; homebrew inreplace sets this at install. Git clones use git describe.
 __version__ = "dev"
 
 POLL_SECONDS = 60
@@ -219,7 +219,7 @@ def parse_iso(iso: str) -> datetime:
 
 
 def resolve_version() -> str:
-    """Version for --version: baked __version__ on releases, else git describe, else dev."""
+    """Version for --version: patched __version__ (e.g. homebrew), else git describe, else dev."""
     if __version__ != "dev":
         return __version__
 
