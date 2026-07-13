@@ -1,7 +1,7 @@
 # open-prs
 
-[![release:prime](https://img.shields.io/github/actions/workflow/status/logfoxai/open-prs/release.yml?branch=main&label=release%3Aprime)](https://github.com/logfoxai/open-prs/actions/workflows/release.yml)
-[![release:prod](https://img.shields.io/github/actions/workflow/status/logfoxai/open-prs/release.yml?branch=prod&label=release%3Aprod)](https://github.com/logfoxai/open-prs/actions/workflows/release.yml)
+[![next](https://img.shields.io/github/actions/workflow/status/logfoxai/open-prs/release.yml?branch=next&label=next)](https://github.com/logfoxai/open-prs/actions/workflows/release.yml)
+[![release](https://img.shields.io/github/actions/workflow/status/logfoxai/open-prs/release.yml?branch=main&label=release)](https://github.com/logfoxai/open-prs/actions/workflows/release.yml)
 [![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue)]()
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
 [![AutoRel](https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE)](https://github.com/mhweiner/autorel)
