@@ -21,8 +21,6 @@ Designed with [AI coding agents](#ai-agent-integration) in mind.
 
 <img src="assets/screenshot-v4.png" alt="open-prs watch mode with Logfox theme" />
 
-> **Note: Requires `gh auth login` first.**
-
 ## Features
 
 - **Instant failure diagnostics** — see exactly which workflow and step failed, right in your terminal, without opening GitHub's slow UI
