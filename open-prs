@@ -290,11 +290,16 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
     return prs
 
 
-def _extract_failures(suites: list[dict], repo: dict) -> list[dict]:
+def _extract_failures(
+    suites: list[dict],
+    repo: dict,
+    conclusions: frozenset[str] | None = None,
+) -> list[dict]:
     """Extract failed workflow info from checkSuites."""
+    fail_conclusions = conclusions if conclusions is not None else frozenset({"FAILURE"})
     failures = []
     for suite in suites:
-        if suite.get("conclusion") != "FAILURE":
+        if suite.get("conclusion") not in fail_conclusions:
             continue
         run = suite.get("workflowRun")
         if not run:
@@ -454,9 +459,33 @@ def _is_ship_workflow(name: str | None) -> bool:
 
 
 def _is_ship_suite(suite: dict) -> bool:
+    return _is_ship_workflow(_suite_workflow_name(suite))
+
+
+def _suite_workflow_name(suite: dict) -> str | None:
     run = suite.get("workflowRun") or {}
     workflow = run.get("workflow") or {}
-    return _is_ship_workflow(workflow.get("name"))
+    return workflow.get("name")
+
+
+def _suite_updated_at(suite: dict) -> datetime:
+    raw = suite.get("updatedAt")
+    if not raw:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return parse_iso(raw)
+
+
+def _latest_suites_by_workflow(suites: list[dict]) -> list[dict]:
+    """Keep the newest check suite per workflow name (re-runs supersede older ones)."""
+    latest: dict[str, dict] = {}
+    for suite in suites:
+        name = _suite_workflow_name(suite)
+        if not name:
+            continue
+        prev = latest.get(name)
+        if prev is None or _suite_updated_at(suite) >= _suite_updated_at(prev):
+            latest[name] = suite
+    return list(latest.values())
 
 
 def _workflow_status_from_rollup(
@@ -465,10 +494,10 @@ def _workflow_status_from_rollup(
 ) -> tuple[dict | None, list[dict]]:
     """Derive post-merge status from ship workflows only (release / deploy / publish).
 
-    CI on main is not a release.
+    CI on main is not a release. Re-runs: only the latest suite per workflow name.
     """
-    ship_suites = [s for s in suites if _is_ship_suite(s)]
-    failures = _extract_failures(ship_suites, repo)
+    ship_suites = _latest_suites_by_workflow([s for s in suites if _is_ship_suite(s)])
+    failures = _extract_failures(ship_suites, repo, SHIP_FAIL_CONCLUSIONS)
 
     if not ship_suites:
         return None, failures

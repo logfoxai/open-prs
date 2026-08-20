@@ -92,6 +92,28 @@ class WorkflowStatusFromShipPipelineTests(unittest.TestCase):
         ws, _ = status([])
         self.assertIsNone(ws)
 
+    def test_newer_successful_release_wins_over_stale_failure(self):
+        ws, failures = status([
+            suite("release", "FAILURE", "2026-08-20T18:00:00Z"),
+            suite("release", "SUCCESS", "2026-08-20T19:00:00Z"),
+        ])
+        self.assertEqual(ws["status"], "success")
+        self.assertEqual(failures, [])
+
+    def test_newer_failed_release_wins_over_stale_success(self):
+        ws, failures = status([
+            suite("release", "SUCCESS", "2026-08-20T18:00:00Z"),
+            suite("release", "FAILURE", "2026-08-20T19:00:00Z"),
+        ])
+        self.assertEqual(ws["status"], "failure")
+        self.assertEqual(len(failures), 1)
+
+    def test_timed_out_release_includes_failure_details(self):
+        ws, failures = status([suite("release", "TIMED_OUT")])
+        self.assertEqual(ws["status"], "failure")
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["workflow"], "release")
+
 
 class ResolveDeploymentBadgeTests(unittest.TestCase):
     def test_no_ship_status_stays_merged(self):
