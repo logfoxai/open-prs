@@ -8,7 +8,7 @@
   <a href="https://github.com/mhweiner/autorel"><img src="https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE" alt="AutoRel" /></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
   <a href="https://github.com/logfoxai/homebrew-tap"><img src="https://img.shields.io/badge/Homebrew-install-FBB040?logo=homebrew" alt="Homebrew" /></a>
-  <img src="https://img.shields.io/badge/%F0%9F%96%A5%EF%B8%8F_TUI-blueviolet" alt="TUI" />
+  <img src="https://img.shields.io/badge/%F0%9F%96%A5TUI-blueviolet" alt="TUI" />
 </p>
 
 **Your entire org's PRs. One terminal.**
