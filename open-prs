@@ -448,6 +448,7 @@ SHIP_FAIL_CONCLUSIONS = frozenset({
     "STARTUP_FAILURE",
     "CANCELLED",
 })
+SHIP_IGNORE_CONCLUSIONS = frozenset({"SKIPPED", "NEUTRAL"})
 
 
 def _is_ship_workflow(name: str | None) -> bool:
@@ -476,14 +477,26 @@ def _suite_updated_at(suite: dict) -> datetime:
 
 
 def _latest_suites_by_workflow(suites: list[dict]) -> list[dict]:
-    """Keep the newest check suite per workflow name (re-runs supersede older ones)."""
+    """Keep the newest meaningful check suite per workflow name.
+
+    Re-runs supersede older ones. SKIPPED/NEUTRAL do not hide a prior
+    success or failure on the same workflow.
+    """
     latest: dict[str, dict] = {}
     for suite in suites:
         name = _suite_workflow_name(suite)
         if not name:
             continue
         prev = latest.get(name)
-        if prev is None or _suite_updated_at(suite) >= _suite_updated_at(prev):
+        if suite.get("conclusion") in SHIP_IGNORE_CONCLUSIONS:
+            if prev is None:
+                latest[name] = suite
+            continue
+        if (
+            prev is None
+            or prev.get("conclusion") in SHIP_IGNORE_CONCLUSIONS
+            or _suite_updated_at(suite) >= _suite_updated_at(prev)
+        ):
             latest[name] = suite
     return list(latest.values())
 

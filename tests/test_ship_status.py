@@ -114,6 +114,15 @@ class WorkflowStatusFromShipPipelineTests(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0]["workflow"], "release")
 
+    def test_newer_skipped_release_does_not_hide_prior_failure(self):
+        ws, failures = status([
+            suite("release", "FAILURE", "2026-08-20T18:00:00Z"),
+            suite("release", "SKIPPED", "2026-08-20T19:00:00Z"),
+        ])
+        self.assertIsNotNone(ws)
+        self.assertEqual(ws["status"], "failure")
+        self.assertEqual(len(failures), 1)
+
 
 class ResolveDeploymentBadgeTests(unittest.TestCase):
     def test_no_ship_status_stays_merged(self):
