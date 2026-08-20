@@ -1,20 +1,23 @@
+<div align="center">
+
 # open-prs
 
-[![SemVer](https://img.shields.io/badge/SemVer-2.0.0-blue)]()
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
-[![AutoRel](https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE)](https://github.com/mhweiner/autorel)
-
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Homebrew](https://img.shields.io/badge/Homebrew-install-FBB040?logo=homebrew)](https://github.com/logfoxai/homebrew-tap)
-![TUI](https://img.shields.io/badge/%F0%9F%96%A5%EF%B8%8F_TUI-blueviolet)
+<p>
+  <img src="https://img.shields.io/badge/SemVer-2.0.0-blue" alt="SemVer" />
+  <a href="https://conventionalcommits.org"><img src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg" alt="Conventional Commits" /></a>
+  <a href="https://github.com/mhweiner/autorel"><img src="https://img.shields.io/badge/%F0%9F%9A%80%20AutoRel-2D4DDE" alt="AutoRel" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+  <a href="https://github.com/logfoxai/homebrew-tap"><img src="https://img.shields.io/badge/Homebrew-install-FBB040?logo=homebrew" alt="Homebrew" /></a>
+  <img src="https://img.shields.io/badge/%F0%9F%96%A5TUI-blueviolet" alt="TUI" />
+</p>
 
 **Your entire org's PRs. One terminal.**
+
+</div>
 
 `open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge release tracking, and clickable links. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
 Designed with [AI coding agents](#ai-agent-integration) in mind.
-
-> **Note: Requires `gh auth login` first.**
 
 <img src="assets/screenshot-v4.png" alt="open-prs watch mode with Logfox theme" />
 
