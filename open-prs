@@ -9,8 +9,8 @@ Usage:
     open-prs --version | -v         Print version and exit
 
 Shows open PRs with CI status and recently merged PRs with post-merge
-workflow status. Successful deploys fade after 15 min and failures stay
-on screen until resolved.
+ship-pipeline status (release / deploy / publish). Successful releases
+fade after 15 min and failures stay on screen until resolved.
 
 PR titles are clickable via OSC 8 hyperlinks (iTerm2, VS Code, etc.).
 Requires: gh (GitHub CLI), authenticated.
@@ -122,15 +122,6 @@ GRAPHQL_QUERY = """\
         author {{ login }}
         mergedAt
         mergeCommit {{
-          oid
-          statusCheckRollup {{
-            state
-            contexts(first: 20) {{
-              nodes {{
-                ... on CheckRun {{ status conclusion completedAt }}
-              }}
-            }}
-          }}
           checkSuites(first: 20) {{
             nodes {{ conclusion updatedAt workflowRun {{ workflow {{ name }} databaseId runNumber url }} }}
           }}
@@ -158,9 +149,9 @@ CI_BADGES = {
 }
 
 DEPLOY_BADGES = {
-    "success":  f"{BG_SUCCESS}{BOLD}{DARK_GREEN} ✓ deployed {RESET} ",
+    "success":  f"{BG_SUCCESS}{BOLD}{DARK_GREEN} ✓ released {RESET} ",
     "failure":  f"{BG_FAILURE}{BOLD}{LIGHT_PINK} ✗ failed {RESET} ",
-    "running":  f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● deploying {RESET} ",
+    "running":  f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ● releasing {RESET} ",
     "queued":   f"{BG_PENDING}{BOLD}{DARK_MUSTARD} ◦ queued {RESET} ",
     "merged":   f"{BG_MERGED}{BOLD}\033[38;2;60;40;80m ✓ merged {RESET} ",
 }
@@ -299,11 +290,16 @@ def _parse_open_nodes(nodes: list) -> list[dict]:
     return prs
 
 
-def _extract_failures(suites: list[dict], repo: dict) -> list[dict]:
+def _extract_failures(
+    suites: list[dict],
+    repo: dict,
+    conclusions: frozenset[str] | None = None,
+) -> list[dict]:
     """Extract failed workflow info from checkSuites."""
+    fail_conclusions = conclusions if conclusions is not None else frozenset({"FAILURE"})
     failures = []
     for suite in suites:
-        if suite.get("conclusion") != "FAILURE":
+        if suite.get("conclusion") not in fail_conclusions:
             continue
         run = suite.get("workflowRun")
         if not run:
@@ -426,9 +422,8 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
         if not node or not node.get("mergeCommit"):
             continue
         commit = node["mergeCommit"]
-        rollup = commit.get("statusCheckRollup")
         suites = commit.get("checkSuites", {}).get("nodes", [])
-        status, failures = _workflow_status_from_rollup(rollup, suites, node["repository"])
+        status, failures = _workflow_status_from_rollup(suites, node["repository"])
         prs.append({
             "repo": node["repository"]["name"],
             "org": node["repository"]["owner"]["login"],
@@ -445,38 +440,98 @@ def _parse_merged_nodes(nodes: list) -> list[dict]:
     return prs
 
 
+SHIP_WORKFLOW_MARKERS = ("release", "deploy", "publish")
+SHIP_FAIL_CONCLUSIONS = frozenset({
+    "FAILURE",
+    "ERROR",
+    "TIMED_OUT",
+    "STARTUP_FAILURE",
+    "CANCELLED",
+})
+SHIP_IGNORE_CONCLUSIONS = frozenset({"SKIPPED", "NEUTRAL"})
+
+
+def _is_ship_workflow(name: str | None) -> bool:
+    """True when a workflow name looks like a ship pipeline, not CI."""
+    if not name:
+        return False
+    lowered = name.lower()
+    return any(marker in lowered for marker in SHIP_WORKFLOW_MARKERS)
+
+
+def _is_ship_suite(suite: dict) -> bool:
+    return _is_ship_workflow(_suite_workflow_name(suite))
+
+
+def _suite_workflow_name(suite: dict) -> str | None:
+    run = suite.get("workflowRun") or {}
+    workflow = run.get("workflow") or {}
+    return workflow.get("name")
+
+
+def _suite_updated_at(suite: dict) -> datetime:
+    raw = suite.get("updatedAt")
+    if not raw:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    return parse_iso(raw)
+
+
+def _latest_suites_by_workflow(suites: list[dict]) -> list[dict]:
+    """Keep the newest meaningful check suite per workflow name.
+
+    Re-runs supersede older ones. SKIPPED/NEUTRAL do not hide a prior
+    success or failure on the same workflow.
+    """
+    latest: dict[str, dict] = {}
+    for suite in suites:
+        name = _suite_workflow_name(suite)
+        if not name:
+            continue
+        prev = latest.get(name)
+        if suite.get("conclusion") in SHIP_IGNORE_CONCLUSIONS:
+            if prev is None:
+                latest[name] = suite
+            continue
+        if (
+            prev is None
+            or prev.get("conclusion") in SHIP_IGNORE_CONCLUSIONS
+            or _suite_updated_at(suite) >= _suite_updated_at(prev)
+        ):
+            latest[name] = suite
+    return list(latest.values())
+
+
 def _workflow_status_from_rollup(
-    rollup: dict | None,
     suites: list[dict],
     repo: dict,
 ) -> tuple[dict | None, list[dict]]:
-    """Derive post-merge workflow status from GitHub's statusCheckRollup (same source as open PR CI)."""
-    failures = _extract_failures(suites, repo)
+    """Derive post-merge status from ship workflows only (release / deploy / publish).
 
-    if not rollup:
+    CI on main is not a release. Re-runs: only the latest suite per workflow name.
+    """
+    ship_suites = _latest_suites_by_workflow([s for s in suites if _is_ship_suite(s)])
+    failures = _extract_failures(ship_suites, repo, SHIP_FAIL_CONCLUSIONS)
+
+    if not ship_suites:
         return None, failures
 
-    state = rollup.get("state")
-    if state == "SUCCESS":
+    conclusions = [s.get("conclusion") for s in ship_suites]
+    if any(c in SHIP_FAIL_CONCLUSIONS for c in conclusions):
+        return {"status": "failure", "completed_at": None}, failures
+    if any(c is None for c in conclusions):
+        return {"status": "running", "completed_at": None}, failures
+    if any(c == "SUCCESS" for c in conclusions):
         return {
             "status": "success",
-            "completed_at": _latest_check_completion(rollup, suites),
+            "completed_at": _latest_ship_completion(ship_suites),
         }, failures
-    if state in ("FAILURE", "ERROR"):
-        return {"status": "failure", "completed_at": None}, failures
-    if state in ("PENDING", "EXPECTED"):
-        return {"status": "running", "completed_at": None}, failures
 
     return None, failures
 
 
-def _latest_check_completion(rollup: dict, suites: list[dict]) -> datetime | None:
-    """Latest completion time from rollup check runs or successful workflow suites."""
+def _latest_ship_completion(suites: list[dict]) -> datetime | None:
+    """Latest completion time from successful ship workflow suites."""
     times: list[datetime] = []
-    for node in rollup.get("contexts", {}).get("nodes", []):
-        completed = node.get("completedAt")
-        if completed:
-            times.append(parse_iso(completed))
     for suite in suites:
         if suite.get("conclusion") == "SUCCESS" and suite.get("updatedAt"):
             times.append(parse_iso(suite["updatedAt"]))

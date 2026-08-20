@@ -10,7 +10,7 @@
 
 **Your entire org's PRs. One terminal.**
 
-`open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge deploy tracking, and clickable links. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
+`open-prs` is a single-file TUI + CLI tool that shows every open pull request across a GitHub organization — with live CI status, post-merge release tracking, and clickable links. Run it for a full-screen live dashboard, or pass `--once` for a quick terminal printout.
 
 Designed with [AI coding agents](#ai-agent-integration) in mind.
 
@@ -24,7 +24,7 @@ Designed with [AI coding agents](#ai-agent-integration) in mind.
 - **Live CI badges** — passed, failed, running, or no CI for every PR
 - **Repo main branch status** — small `✗` or `●` indicator when a repo's default branch is failing or running checks
 - **Merge conflict detection** — `⚠ conflict` badge when a PR has conflicts
-- **Post-merge deploy tracking** — merged PRs stay visible while deploys run; failures persist, successes fade after 15 min
+- **Post-merge release tracking** — merged PRs stay visible while a ship workflow (`release` / `deploy` / `publish`) runs; failures persist, successes fade after 15 min
 - **Clickable PR titles** — real hyperlinks in iTerm2, VS Code, Ghostty, Kitty, and more
 - **Plain text mode** — `--once --plain` for piping to AI agents or scripts
 - **AI-agent friendly** — one command replaces many `gh` calls; saves time and tokens
@@ -98,7 +98,7 @@ open-prs (--version | -v)
 
 When an AI agent is creating, reviewing, or iterating on PRs across many repos, you need to see what's happening without context-switching. Run `open-prs` in a persistent spot and glance at it:
 
-- **Large monitor** — Keep it in the bottom-right corner of a second screen. One command, full org view: what's open, what's failing CI, what just merged, what's deploying.
+- **Large monitor** — Keep it in the bottom-right corner of a second screen. One command, full org view: what's open, what's failing CI, what just merged, what's releasing.
 - **VS Code terminal** — Run it in a dedicated terminal tab. It stays live while you (or your agent) work in other tabs.
 - **iTerm / Kitty / Ghostty** — Same idea: a small window or split that stays open.
 
@@ -136,22 +136,22 @@ When a repository's default branch has workflow activity:
 - `⚠ conflict` — PR has merge conflicts
 - `no ci` — No status checks configured
 
-### Merged / Deploy (on merged PRs)
+### Merged / Release (on merged PRs)
 
-Recently merged PRs appear for 15 minutes with a purple **✓ merged** badge. If post-merge workflows exist, the badge updates to reflect deploy status:
+Recently merged PRs appear for 15 minutes with a purple **✓ merged** badge. If a **ship** workflow ran on the merge commit (`release`, `deploy`, or `publish` in the workflow name), the badge tracks that pipeline only — CI on `main` is not a release:
 
-- `✓ merged` — Recently merged (no deploy pipeline)
-- `✓ deployed` — All workflows completed successfully
-- `✗ failed` — One or more workflows failed
-- `● deploying` — Workflows in progress
-- `◦ queued` — Workflows are queued/waiting
+- `✓ merged` — Recently merged, and no ship workflow ran
+- `✓ released` — Ship workflow completed successfully
+- `✗ failed` — Ship workflow failed
+- `● releasing` — Ship workflow in progress
+- `◦ queued` — Ship workflow is queued/waiting
 
-Merged and successful deploys fade after 15 minutes. Failed deploys persist until resolved.
+Merged and successful releases fade after 15 minutes. Failed releases persist until resolved.
 
 ## How It Works
 
 1. A single GitHub GraphQL call fetches all open + recently merged PRs across the org
-2. Open PR CI and merged PR deploy status both use each commit's `statusCheckRollup` (GitHub's aggregated check state)
+2. Open PR CI uses each commit's `statusCheckRollup`. Merged PR release status uses check suite **workflow names** — only `release` / `deploy` / `publish` count as a ship pipeline
 3. **Repo main branch status** is fetched asynchronously in parallel (cached for 5 minutes) and displayed as subtle indicators next to repo names
 4. Everything renders with 24-bit true color (ANSI), OSC 8 hyperlinks, and responsive column layout
 5. The TUI uses the terminal's alternate screen buffer for a clean full-screen experience
@@ -161,7 +161,7 @@ Merged and successful deploys fade after 15 minutes. Failed deploys persist unti
 All tunables are constants at the top of the script — no config files needed:
 
 - `POLL_SECONDS` — Polling interval in TUI mode (default: `60`)
-- `DEPLOY_FADE_SECONDS` — How long successful deploys stay visible (default: `900`)
+- `DEPLOY_FADE_SECONDS` — How long successful releases stay visible (default: `900`)
 - `MERGED_LOOKBACK_HOURS` — How far back to search for merged PRs (default: `24`)
 - `REPO_STATUS_CACHE_SECONDS` — Cache time for repo main branch status (default: `300`)
 
