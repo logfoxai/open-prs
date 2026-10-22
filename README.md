@@ -1,6 +1,10 @@
 <div align="center">
 
-# open-prs
+<picture>
+  <source srcset="assets/open-prs-dark.svg" media="(prefers-color-scheme: dark)" />
+  <source srcset="assets/open-prs-light.svg" media="(prefers-color-scheme: light)" />
+  <img src="assets/open-prs-light.svg" height="56" alt="open-prs" />
+</picture>
 
 <p>
   <img src="https://img.shields.io/badge/SemVer-2.0.0-blue" alt="SemVer" />
